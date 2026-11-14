@@ -42,7 +42,7 @@ The spec says the database layer is written by hand and graded, so keep Codex aw
 
 ## Phase 1: Paper design (≈1–2 hours)
 
-This is the debit/credit exercise from earlier. Finish it before writing any SQL.
+This is the debit/credit exercise from earlier. Finish it before writing any SQL. See [Phase 1 Tutorial](tutorials/phase-1-paper-design.md).
 
 **Done when**
 - [ ] The entries for top-up, transfer with fee, withdrawal, full refund and partial refund are written down and balance

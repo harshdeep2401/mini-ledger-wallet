@@ -1,0 +1,12 @@
+{
+  "name": "mini-ledger-wallet",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:apply": "node --env-file=.env scripts/db.mjs apply",
+    "db:reset": "node --env-file=.env scripts/db.mjs reset"
+  },
+  "dependencies": {
+    "pg": "^8.23.1"
+  }
+}

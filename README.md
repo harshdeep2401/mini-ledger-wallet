@@ -33,10 +33,6 @@ server is not required. Create a Neon project and database, then connect with
 `psql` or another PostgreSQL client. Store the connection string in a local
 `.env` file, never in source control. The `.gitignore` excludes `.env` files.
 
-The project is at its initial setup stage. See `IMPLEMENTATION-PLAN.md` for the
-learning order. The API and frontend will be added after the database function
-signatures are settled.
-
 ## Project notes
 
 See [`ledger-wallet-project.md`](ledger-wallet-project.md) for requirements and
