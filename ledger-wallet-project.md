@@ -6,6 +6,8 @@ A mini payments backend. Users hold wallets and can top up, transfer to each oth
 
 This is a simulation. No real money or payment gateway is involved, and the README says so clearly.
 
+**UPI-style layer.** The project is presented as a *UPI-style payment simulator*. People pay each other by a virtual payment address (VPA such as `alice@minibank`), authorise with a PIN, receive a payment reference number, and can raise "collect" requests that the payer approves or declines. This is a thin product layer on top of the ledger: the double-entry core (entries, balance trigger, idempotency, locking, reconciliation) is unchanged. It mimics UPI's user experience and flows only; it does **not** connect to NPCI, any bank, or the real UPI network, and the README must say so.
+
 ## Division of work
 
 - **Database layer (written by hand):** schema, constraints, triggers, PL/pgSQL functions, indexing, concurrency demos. This is the graded core of the project.
@@ -50,10 +52,12 @@ Frontend (light UI)  →  API server (thin wrapper)  →  PostgreSQL
 | Table | Purpose |
 |---|---|
 | `users` | Customers |
-| `accounts` | User wallets and seeded system accounts (bank, fee income): type, currency, status (active/frozen/closed), cached balance, whether negative balance is allowed |
-| `transactions` | One row per business event: type, status, idempotency key, `reverses_transaction_id`, metadata |
+| `accounts` | User wallets and seeded system accounts (bank, fee income): type, currency, status (active/frozen/closed), cached balance, whether negative balance is allowed, hashed UPI PIN, failed-PIN counter / lock state, daily send limit |
+| `transactions` | One row per business event (append-only, no status column): type, idempotency key, `reverses_transaction_id`, metadata, unique payment reference (RRN) |
 | `ledger_entries` | The heart of the system: transaction, account, direction (debit/credit), amount (> 0), timestamp |
 | `idempotency_keys` | Key, request hash, stored response, state |
+| `vpas` | Virtual payment addresses (`name@minibank`) mapped to an account; unique, one account can have several |
+| `payment_requests` | Collect requests: payee, payer VPA, amount, status (pending / approved / declined / expired), expiry time, resulting transaction |
 
 ## Features
 
@@ -64,10 +68,16 @@ Frontend (light UI)  →  API server (thin wrapper)  →  PostgreSQL
 - Withdrawal (wallet → bank)
 - Full or partial refund as a reversing transaction, capped so total refunded can't exceed the original
 - Freeze / unfreeze an account
+- Register a VPA for a wallet
+- Set / change the UPI PIN (stored hashed, never plain text)
+- Pay by VPA: resolve VPA → verify PIN → check daily limit → transfer. A successful payment returns a payment reference (RRN).
+- Collect request: payee raises a request against a payer's VPA; the payer approves (with PIN), declines, or lets it expire. Approval posts a normal transfer.
 
 **Reads:**
 - Current balance
 - Transaction history with keyset pagination
+- Resolve a VPA to the payee's display name (so the user confirms who they're paying before entering a PIN)
+- List pending collect requests for a VPA
 
 **Idempotency:**
 - Same key + same payload → returns the stored response
@@ -87,12 +97,18 @@ Frontend (light UI)  →  API server (thin wrapper)  →  PostgreSQL
 - No overdrafts on accounts that don't allow negative balances
 - Unique constraint on the idempotency key
 - Separate DB roles: app, read-only reporting, admin
+- PIN is stored hashed (pgcrypto); verified inside the payment function, never in the API
+- Too many wrong PIN attempts locks the account's payments (counter lives in the DB)
+- Daily send limit enforced in the payment function
+- A collect request can only move `pending → approved/declined/expired`; an approved or expired request can't be paid again
+- Unique VPA and unique payment reference (RRN)
 
 ## Concurrency and performance
 
 **Break-then-fix demos** (triggered with a Python script using threads, or pgbench):
 1. **Double-spend:** two ₹800 withdrawals against a ₹1000 wallet both succeed without locking. Fixed with `SELECT ... FOR UPDATE` on the account row.
 2. **Deadlock:** a transfer A→B racing with B→A deadlocks. Fixed by always locking accounts in ascending id order.
+3. **Failed payment with auto-reversal (UPI-flavoured, stretch goal):** a payment is posted in two steps (payer → a system "in-transit" account, then in-transit → payee). A simulated failure or timeout hits between the steps; the system detects the stuck payment and posts a reversing transaction so the payer is made whole and the ledger still balances. The two-step design and the in-transit account are your design decision; keep it to one reversal function plus a script that injects the failure.
 
 **Performance:**
 - Seed ~1M ledger entries using `generate_series`
@@ -101,11 +117,13 @@ Frontend (light UI)  →  API server (thin wrapper)  →  PostgreSQL
 
 **Bonus if time allows:** a quick throughput comparison of pessimistic locking vs. `SERIALIZABLE` isolation with retry.
 
+**Stretch (only if everything else is done): multiple simulated banks.** Two or three fake banks (e.g. `minibank`, `fakebank`), each with its own settlement account. A cross-bank payment debits the payer's bank and credits the payee's bank, and a net settlement job zeroes the balances between banks. This is the largest possible addition to the schema and to reconciliation, so treat it as optional.
+
 ## API and frontend
 
-**API endpoints** (each wraps one DB function): create user/wallet, top-up, transfer, withdraw, refund, freeze, get balance, get history, run reconciliation.
+**API endpoints** (each wraps one DB function): create user/wallet, top-up, transfer, withdraw, refund, freeze, get balance, get history, run reconciliation, register VPA, set PIN, resolve VPA, pay by VPA, create / approve / decline collect request, list pending requests.
 
-**Frontend screens:** wallet list, balance and history view, transfer form, and a "Check ledger" button that runs reconciliation and shows the result.
+**Frontend screens:** wallet list, balance and history view, a UPI-style pay flow (enter or pick a VPA → confirm payee name and amount → PIN pad → success / failure screen with the payment reference), a collect-requests inbox (approve / decline), and a "Check ledger" button that runs reconciliation and shows the result.
 
 **Checks for AI-generated code:**
 - No business logic outside the database
@@ -115,15 +133,19 @@ Frontend (light UI)  →  API server (thin wrapper)  →  PostgreSQL
 
 ## Out of scope
 
-Holds (authorize/capture/void), merchant settlements, outbox/webhooks, multi-currency and FX, partitioning, spending limits, monthly statements, point-in-time balance, disputes, crash testing.
+Holds (authorize/capture/void), merchant settlements, outbox/webhooks, multi-currency and FX, partitioning, monthly statements, point-in-time balance, disputes, crash testing, any real integration with NPCI / UPI / banks, real QR scanning (a mock QR screen is fine), and the UPI-Lite / mandate / autopay features.
+
+*Moved into scope by the UPI-style framing:* a simple daily send limit and the `pending` state for collect requests (not full authorize/capture holds).
+
+**Open decisions (yours):** whether P2P payments by VPA carry the ₹5 fee or are free like real UPI; the daily limit amount; whether to attempt the failed-payment auto-reversal and the multi-bank stretch.
 
 ## Build plan (3 days)
 
 | Day | Work |
 |---|---|
-| 1 | Debit/credit pattern for each transaction type on paper. Schema, constraints and triggers (deferred trigger first, since it's the riskiest). ER diagram and normalization notes. |
-| 2 | Posting function and operation functions, idempotency, reconciliation, seed data, indexing and `EXPLAIN ANALYZE`. Generate the API and frontend against the finished function signatures. |
-| 3 | Concurrency demos, end-to-end testing through the UI, report and demo script. |
+| 1 | Debit/credit pattern for each transaction type on paper. Schema (including `vpas`, PIN and limit columns, `payment_requests`), constraints and triggers (deferred trigger first, since it's the riskiest). ER diagram and normalization notes. |
+| 2 | Posting function and operation functions, idempotency, reconciliation, UPI layer functions (VPA, PIN check, daily limit, pay by VPA, collect requests), seed data, indexing and `EXPLAIN ANALYZE`. Generate the API and frontend against the finished function signatures. |
+| 3 | Concurrency demos (plus the failed-payment demo if attempted), end-to-end testing through the UPI-style UI, report and demo script. The UPI layer adds roughly half a day of SQL, so cut the stretch goals first if time runs short. |
 
 ## Deliverables
 
@@ -131,4 +153,4 @@ Holds (authorize/capture/void), merchant settlements, outbox/webhooks, multi-cur
 - An "invariants" document listing each guarantee and how the database enforces it
 - `EXPLAIN ANALYZE` before/after results for indexing and pagination
 - Concurrency write-up showing each break-then-fix scenario
-- Demo script and a short README (including the simulation disclaimer)
+- Demo script and a short README (including the simulation disclaimer: UPI-style only, no connection to NPCI, banks or real money)

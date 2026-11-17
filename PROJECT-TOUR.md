@@ -10,6 +10,8 @@ Read it once now to get a feel for the project, then again on Day 3 when you reh
 
 > "It's a mini payments backend where the **database itself** guarantees money can't be created, lost, double-spent or silently edited, even if the application code is buggy."
 
+Presented as a **UPI-style payment simulator**: users pay each other by VPA with a PIN, get a payment reference, and can raise collect requests. It mimics the UPI experience only; it is not connected to NPCI, any bank, or real money. The UPI layer is a thin product skin; the guarantees underneath are the ledger's.
+
 Everything in the demo exists to prove that sentence. Keep coming back to it.
 
 ---
@@ -26,10 +28,12 @@ mini-ledger-wallet/
 │   ├── 05_reconciliation.sql   the "is the ledger healthy?" check
 │   ├── 06_roles.sql            app / reporting / admin roles + privileges
 │   ├── 07_seed.sql             system accounts + demo users
-│   └── 08_perf_seed.sql        ~1M entries via generate_series
+│   ├── 08_perf_seed.sql        ~1M entries via generate_series
+│   └── 09_upi.sql (suggested)  VPAs, PIN check, daily limit, pay-by-VPA, collect requests
 ├── demos/
 │   ├── double_spend.py         race two withdrawals (broken vs fixed)
 │   ├── deadlock.py             race A→B and B→A (broken vs fixed)
+│   ├── payment_failure.py      (stretch) inject a failure mid-payment, show auto-reversal
 │   └── explain/                saved EXPLAIN ANALYZE outputs
 ├── api/                        thin wrapper (AI-assisted)
 ├── frontend/                   light UI (AI-assisted)
@@ -56,10 +60,15 @@ mini-ledger-wallet/
 | Withdraw ₹200 | Balance drops by 200 | Debit Alice 200, credit Bank 200 |
 | Refund (full/partial) | Money goes back | A **new** transaction whose entries mirror the original; the original is never edited |
 | Freeze / unfreeze | Account greyed out | Status column changes; trigger blocks postings while frozen |
+| Register VPA + set PIN | `alice@minibank` appears on her profile | Row in `vpas`; hashed PIN stored on the account |
+| Pay by VPA | Enter VPA → see payee name → PIN → success screen with reference no. | Same three-leg transfer as P2P, plus VPA lookup, PIN check, daily-limit check and an RRN on the transaction |
+| Collect request | Bob requests ₹300 from Alice; Alice sees it in her inbox and approves, declines or lets it expire | Row in `payment_requests`; approval runs the normal transfer |
 
 ### B. Reads
 - **Balance:** read from the cached column (fast), and it always matches the sum of entries.
 - **History:** paginated list of a wallet's entries, using keyset pagination.
+- **Resolve VPA:** payee's display name, shown before the user enters a PIN.
+- **Pending collect requests** for a VPA.
 
 ### C. Safety guarantees (the part that impresses professors)
 | Guarantee | Enforced by |
@@ -72,6 +81,10 @@ mini-ledger-wallet/
 | Retry doesn't charge twice | Idempotency table + `UNIQUE` key |
 | Refund can't exceed the original | Check in `refund()` against the sum of previous refunds |
 | Cached balances are honest | Reconciliation function |
+| PIN can't be read or brute-forced | Stored hashed; wrong-attempt counter locks payments, all inside the DB |
+| Daily limit can't be bypassed | Checked inside the payment function, not the API |
+| Collect request can't be paid twice | Status state machine: only `pending` can become approved / declined / expired |
+| Every payment has a unique reference | `UNIQUE` payment reference (RRN) |
 
 ### D. Engineering proof
 - Two **concurrency bugs** reproduced and then fixed (double-spend, deadlock).
@@ -80,7 +93,7 @@ mini-ledger-wallet/
 
 ---
 
-## 4. The demo: a 15–20 minute script
+## 4. The demo: a 20–25 minute script
 
 Have three windows open side by side:
 1. **Browser** with the frontend
@@ -114,6 +127,13 @@ Then show the ER diagram briefly, focusing on `transactions` (1) → (many) `led
    > "Three legs, 505 out and 505 in. Amounts are in paise, so they're integers and never floats."
 6. Click **"Check ledger"** in the UI → ✅ *Debits = credits, all cached balances match.*
 
+### Act 1b: The UPI-style flow (2 min)
+1. Open the pay screen as Alice. Type `bob@minibank`; the UI shows **Bob's name** (a DB lookup, not an API guess).
+2. Enter ₹200, then the PIN on the on-screen pad.
+3. The success screen shows a **payment reference (RRN)**. Copy it.
+4. In psql, find the transaction by that reference and show the same ledger legs as Act 1.
+   > "UPI is the skin. Underneath it's the same double-entry transfer, and the PIN check, the daily limit and the VPA lookup all run inside the database function."
+
 ### Act 2: Idempotency, the double-click (1–2 min)
 1. In the UI, **double-click** "Send" quickly (or use the "send twice" debug button).
 2. Show that only **one** transaction was created.
@@ -131,6 +151,8 @@ This is the strongest part of the demo. Do it all **in psql**, playing a buggy o
 | Insert an entry with `amount = -50` | ❌ `CHECK` violation |
 | Withdraw ₹5000 from a ₹495 wallet | ❌ `insufficient funds` |
 | Freeze Bob in the UI, then send him money | ❌ `account is frozen` |
+| Enter the wrong PIN several times | ❌ `invalid PIN`, then `payments locked` after N attempts |
+| Pay more than the daily limit | ❌ `daily limit exceeded` |
 
 > "Even if the API had a bug, none of these could reach the ledger."
 
@@ -141,6 +163,12 @@ This is the strongest part of the demo. Do it all **in psql**, playing a buggy o
 2. Show the new transaction with `reverses_transaction_id` pointing at the original. The original rows are untouched.
 3. Try to refund ₹400 more → ❌ `refund exceeds remaining refundable amount (300)`.
 4. Click "Check ledger" → still ✅.
+
+### Act 4b: Collect requests (2 min)
+1. As Bob, request ₹300 from `alice@minibank`.
+2. As Alice, open the inbox and approve with her PIN. Show the new transfer and the request now marked `approved`.
+3. Try to approve the **same request again** → ❌ the state machine refuses (`request is not pending`).
+4. Raise another request and let it expire (use a short expiry for the demo), then try to approve → ❌ `request expired`.
 
 ### Act 5: Reconciliation catches tampering (1 min)
 As **admin**, deliberately corrupt the cached balance:
@@ -178,6 +206,17 @@ $ python demos/deadlock.py --mode fixed
 ```
 > "A→B locks A then B; B→A locks B then A, so each waits for the other. The fix is to always lock the lower account id first, so the cycle can't form."
 
+### Act 6b (stretch): A payment fails halfway (2 min)
+```
+$ python demos/payment_failure.py
+Leg 1: Alice → in-transit ₹500 ... OK
+Leg 2: in-transit → Bob ... TIMEOUT (injected)
+Auto-reversal: in-transit → Alice ₹500 ... OK
+Alice: ₹1000, Bob: ₹0, in-transit: ₹0
+Ledger check: ✅
+```
+> "This is UPI's real 'money debited but not credited' problem. The ledger never edits history: it posts a reversing transaction, and reconciliation still passes."
+
 ### Act 7: Performance (2–3 min)
 Show the saved outputs (don't run 1M-row seeding live):
 
@@ -193,7 +232,7 @@ Show the saved outputs (don't run 1M-row seeding live):
 *(Your real numbers will differ. Use what you measure.)*
 
 ### Closing (30 sec)
-> "Money is never a number I update. It's the sum of immutable entries, and Postgres refuses anything that doesn't balance, rewrites history, overdraws, or double-charges."
+> "Money is never a number I update. It's the sum of immutable entries, and Postgres refuses anything that doesn't balance, rewrites history, overdraws, or double-charges. The UPI-style experience sits on top, and every rule behind it, including the PIN, is enforced by the database."
 
 ---
 
@@ -224,6 +263,14 @@ Show the saved outputs (don't run 1M-row seeding live):
 - Why that column order `(account_id, created_at, id)`? → Equality column first, then the sort columns. `id` breaks ties for stable keyset pagination.
 - Why is OFFSET slow on deep pages? → It still reads and throws away all the skipped rows.
 
+**UPI layer**
+- Is this real UPI? → No. It mimics the user flows (VPA, PIN, reference number, collect requests). It isn't connected to NPCI or any bank, and no real money is involved.
+- Why verify the PIN in the database and not the API? → Keeping it in the DB means no code path can skip the check, and the API stays a thin wrapper.
+- Why hash the PIN? → So a database leak doesn't reveal PINs. (Be ready to say that a 4–6 digit PIN is guessable by brute force, which is why the attempt counter and lockout exist.)
+- What is a collect request, and why does it need a state machine? → It's a pull payment the payer must approve. A state machine stops an approved or expired request from being paid twice.
+- What stops a collect request being approved twice by two simultaneous clicks? → Lock the request row (`FOR UPDATE`) and check its status, the same idea as the double-spend fix.
+- (Stretch) What if the debit succeeds but the credit fails? → A reversing transaction returns the money; history is never edited.
+
 **AI-assisted parts**
 - Walk me through what happens when I click "Send". → UI generates a key → POST /transfer → API opens a connection, calls `transfer(...)` in one transaction, returns the JSON → UI updates. Be ready to point at the exact lines.
 
@@ -246,6 +293,10 @@ Show the saved outputs (don't run 1M-row seeding live):
 | **Keyset pagination** | "Give me 20 rows after this one" instead of "skip N rows" |
 | **Reconciliation** | Re-computing totals from scratch to prove the shortcuts are right |
 | **PL/pgSQL** | Postgres's built-in programming language for functions and triggers |
+| **VPA** | Virtual payment address (like `alice@minibank`), an alias that maps to an account |
+| **RRN / payment reference** | Unique reference number for a completed payment, used to look it up later |
+| **Collect request** | A pull payment: the payee asks, the payer approves or declines |
+| **Hashing** | One-way scrambling of a secret (the PIN) so it can be checked but not read back |
 
 ---
 
@@ -259,7 +310,7 @@ You don't need to know everything up front. Learn each concept right before you 
 4. **PL/pgSQL functions:** variables, `IF`, `RAISE EXCEPTION`, `RETURNING`.
 5. **Transactions and locking:** `BEGIN`/`COMMIT`, `FOR UPDATE`. Reproduce a race with two psql windows *before* writing the Python script.
 6. **Indexes and `EXPLAIN ANALYZE`:** learn to read "Seq Scan" vs "Index Scan".
-7. **Roles and `GRANT`/`REVOKE`.**
+7. **Roles and `GRANT`/`REVOKE`**, plus `pgcrypto` for hashing the PIN.
 8. **Then** generate the API and UI on top of the finished functions.
 
 ---
@@ -272,5 +323,7 @@ You don't need to know everything up front. Learn each concept right before you 
 - [ ] `EXPLAIN ANALYZE` outputs saved as text or screenshots (don't seed 1M rows live)
 - [ ] Concurrency scripts tested at least 5 times in a row
 - [ ] Reconciliation shows ✅ at the start and the end
-- [ ] README states clearly: **simulation only, no real money**
+- [ ] README states clearly: **simulation only, no real money, UPI-style only (not connected to NPCI, banks or real UPI)**
+- [ ] Demo VPAs, PINs and a pending collect request seeded
+- [ ] Short-expiry collect request ready for the expiry demo
 - [ ] You can explain every file in `api/` and `frontend/` line by line

@@ -24,3 +24,11 @@
 - **Idempotency key:** nullable column on transactions for now (Phase 6).
 - **Metadata:** `jsonb`.
 - **Constraint names:** CHECK constraints are named explicitly. UNIQUE constraints use PostgreSQL's default `<table>_<column>_key` names.
+
+## Phase 3: Invariant triggers
+
+- **D6 Balance check:** Option C. Deferred constraint triggers on both `transactions` and `ledger_entries` share one check function. This rejects empty transactions and catches later entries added to an existing transaction.
+- **Balance lookup index:** Index `ledger_entries(transaction_id)` so each balance check can find one transaction's entries without scanning the full ledger.
+- **D7 Account status:** Block postings in both directions for frozen or closed accounts. Account status is the only switch; user deactivation will freeze or close the user's account.
+- **D8 Append-only tables:** Both `ledger_entries` and `transactions` are append-only. Reject `UPDATE`, `DELETE`, and `TRUNCATE`; correct mistakes with a reversing transaction.
+- **Trigger rule error code:** Use SQLSTATE `P1001` for trigger-enforced business-rule violations (append-only, balance, and account-status checks). The API can recognize this code as a rule violation.
