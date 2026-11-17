@@ -65,7 +65,7 @@ BEGIN
         COALESCE(SUM(amount) FILTER (WHERE direction = 'debit'), 0),
         COALESCE(SUM(amount) FILTER (WHERE direction = 'credit'), 0)
     INTO entry_count, debit_total, credit_total
-    FROM ledger_entries
+    FROM ledger.ledger_entries
     WHERE transaction_id = checked_transaction_id;
 
     IF entry_count = 0 THEN
@@ -105,11 +105,11 @@ execute function balance_check();
 create or replace function status_guard()
 returns trigger as $$
 declare
-    acc_status account_status;
+    acc_status ledger.account_status;
 begin
     select status
     into acc_status
-    from accounts
+    from ledger.accounts
     where id = new.account_id;
 
     if acc_status in ('frozen', 'closed') then

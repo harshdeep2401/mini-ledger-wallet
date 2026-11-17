@@ -32,3 +32,15 @@
 - **D7 Account status:** Block postings in both directions for frozen or closed accounts. Account status is the only switch; user deactivation will freeze or close the user's account.
 - **D8 Append-only tables:** Both `ledger_entries` and `transactions` are append-only. Reject `UPDATE`, `DELETE`, and `TRUNCATE`; correct mistakes with a reversing transaction.
 - **Trigger rule error code:** Use SQLSTATE `P1001` for trigger-enforced business-rule violations (append-only, balance, and account-status checks). The API can recognize this code as a rule violation.
+
+## Phase 4: Posting function
+
+- **D9 Legs input:** Pass the legs to `post_transaction()` as a JSONB function parameter: an array of objects containing `account_id`, `direction`, and `amount`. This JSONB is temporary input, not a table column. The function writes each leg as a separate `ledger_entries` row. This is separate from `transactions.metadata`, which is optional JSONB stored on the transaction.
+
+- **D10 Cached balance:** Updated inside `post_transaction()` itself, not by a trigger. Only this function inserts into `ledger_entries`, and reconciliation (Phase 8) checks the cache.
+- **D11 Locking and repeated accounts:** The function locks every affected account with `FOR UPDATE` in ascending id order before reading any balance. If an account appears in several legs, its legs are combined into one net change per account, applied once, and the overdraft check uses that net result. (Example: the fee account.)
+- **Self-transfers:** `post_transaction()` does not reject a debit and credit on the same account (they net to zero). `transfer()` rejects sender = recipient in Phase 5.
+- **D12 Overdraft check:** Done inside `post_transaction()` after the account locks are taken, on accounts where `allow_negative` is false.
+- **D13 Broken demo versions:** The unsafe double-spend and deadlock functions live in a separate `demo` schema. Production code never calls anything in `demo`, so the real function has no "unsafe" switch.
+- **Return value:** `post_transaction()` returns the new transaction id (`BIGINT`).
+- **Input validation:** At least two legs; `account_id` and `amount` must be whole numbers, `amount` > 0; `direction` is `debit` or `credit`; legs must balance (the deferred trigger remains as a backstop). All rule violations use SQLSTATE `P1001`.
