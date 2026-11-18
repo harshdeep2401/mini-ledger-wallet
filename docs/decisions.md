@@ -44,3 +44,14 @@
 - **D13 Broken demo versions:** The unsafe double-spend and deadlock functions live in a separate `demo` schema. Production code never calls anything in `demo`, so the real function has no "unsafe" switch.
 - **Return value:** `post_transaction()` returns the new transaction id (`BIGINT`).
 - **Input validation:** At least two legs; `account_id` and `amount` must be whole numbers, `amount` > 0; `direction` is `debit` or `credit`; legs must balance (the deferred trigger remains as a backstop). All rule violations use SQLSTATE `P1001`.
+
+## Phase 5: Operation functions
+
+- **D14 Fee:** Computed by a separate `calculate_fee(amount)` function with the policy as constants inside it (0.5%, minimum 100 paise, maximum 1,000 paise, round half up using `NUMERIC`, never floats). No settings table: one less table and failure mode. The sender pays amount + fee on top; the recipient receives the full amount.
+- **D15 Refunds:** Only `transfer` transactions can be refunded (not top-ups, withdrawals or refunds). A refund reverses only the recipient's amount leg, never the fee. Total refunded per transfer cannot exceed what the recipient received. `refund()` locks the original transaction row (`FOR UPDATE`) before reading the refunded-so-far total, so two concurrent refunds cannot both pass the cap. If the recipient has spent the money, the refund fails with the normal insufficient-funds error.
+- **D16 Return values:** Money movers (`top_up`, `withdraw`, `transfer`, `refund`) return the new transaction id as `BIGINT`. `create_user_with_wallet` returns the user id; `freeze_account` and `unfreeze_account` return the account id. Chosen over `jsonb` for simplicity; any extra detail (fee, balances) is read separately.
+- **System accounts:** `BANK` (asset) and `FEE_INCOME` (income) are looked up by `code`. A missing one raises a clear `P1001` error. They are created by an idempotent insert in `db/04_operations.sql`, so every `db:reset` has them.
+- **Transfer rules:** Both ends must be user wallets (never system accounts) and must differ.
+- **Freeze rules:** Only `active → frozen` and `frozen → active` are legal. System accounts and closed accounts cannot be frozen or unfrozen through these functions.
+- **Duplicate email:** `create_user_with_wallet` catches the unique violation and raises `P1001`. Emails are trimmed and lower-cased before saving.
+- **Idempotency key:** Every money mover already accepts an optional `p_idempotency_key` and passes it to `post_transaction()`; Phase 6 adds the key table and replay logic.

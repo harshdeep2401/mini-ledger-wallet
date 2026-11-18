@@ -56,7 +56,7 @@ mini-ledger-wallet/
 |---|---|---|
 | Create user + wallet | New wallet with ₹0 | Rows in `users` and `accounts` |
 | Top-up ₹1000 | Balance becomes ₹1000 | Debit **Bank** 1000, credit **Alice** 1000 |
-| Transfer ₹500 + ₹5 fee | Alice −505, Bob +500 | Debit Alice 505, credit Bob 500, credit **Fee Income** 5 |
+| Transfer ₹500 + ₹2.50 fee (0.5%) | Alice −502.50, Bob +500 | Debit Alice 502.50, credit Bob 500, credit **Fee Income** 2.50 |
 | Withdraw ₹200 | Balance drops by 200 | Debit Alice 200, credit Bank 200 |
 | Refund (full/partial) | Money goes back | A **new** transaction whose entries mirror the original; the original is never edited |
 | Freeze / unfreeze | Account greyed out | Status column changes; trigger blocks postings while frozen |
@@ -109,7 +109,7 @@ Then show the ER diagram briefly, focusing on `transactions` (1) → (many) `led
 ### Act 1: The happy path in the UI (3 min)
 1. Create **Alice** and **Bob**.
 2. Top up Alice by ₹1000.
-3. Transfer ₹500 Alice → Bob. Point out the ₹5 fee.
+3. Transfer ₹500 Alice → Bob. Point out the ₹2.50 fee (0.5%, minimum ₹1, maximum ₹10).
 4. Open Alice's history, then Bob's.
 5. **Switch to psql** and show the raw entries for that transfer:
    ```sql
@@ -120,11 +120,11 @@ Then show the ER diagram briefly, focusing on `transactions` (1) → (many) `led
    ```
     name        | direction | amount
    -------------+-----------+--------
-    alice       | debit     |  50500
+    alice       | debit     |  50250
     bob         | credit    |  50000
-    fee_income  | credit    |    500
+    fee_income  | credit    |    250
    ```
-   > "Three legs, 505 out and 505 in. Amounts are in paise, so they're integers and never floats."
+   > "Three legs, 502.50 out and 502.50 in. Amounts are in paise, so they're integers and never floats."
 6. Click **"Check ledger"** in the UI → ✅ *Debits = credits, all cached balances match.*
 
 ### Act 1b: The UPI-style flow (2 min)
@@ -149,7 +149,7 @@ This is the strongest part of the demo. Do it all **in psql**, playing a buggy o
 | `DELETE FROM ledger_entries;` (as app role) | ❌ `permission denied` |
 | Insert a debit of 100 with no matching credit, then `COMMIT` | ❌ fails **at commit**: `transaction 42 unbalanced: debits 100 ≠ credits 0` |
 | Insert an entry with `amount = -50` | ❌ `CHECK` violation |
-| Withdraw ₹5000 from a ₹495 wallet | ❌ `insufficient funds` |
+| Withdraw ₹5000 from a ₹497.50 wallet | ❌ `insufficient funds` |
 | Freeze Bob in the UI, then send him money | ❌ `account is frozen` |
 | Enter the wrong PIN several times | ❌ `invalid PIN`, then `payments locked` after N attempts |
 | Pay more than the daily limit | ❌ `daily limit exceeded` |
@@ -175,7 +175,7 @@ As **admin**, deliberately corrupt the cached balance:
 ```sql
 UPDATE accounts SET cached_balance = 99999999 WHERE name = 'alice';
 ```
-Click "Check ledger" → ❌ *Alice: cached 99999999, actual 29500.*
+Click "Check ledger" → ❌ *Alice: cached 99999999, actual 29750.*
 > "The cached column is only for speed. The truth is the sum of the entries, and reconciliation proves it."
 
 (Then fix it back.)

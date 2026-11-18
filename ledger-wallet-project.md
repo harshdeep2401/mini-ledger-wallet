@@ -20,14 +20,14 @@ The rule that holds the design together: **the API never touches a balance.** Ev
 
 **Double-entry bookkeeping.** Every transaction has two or more entries, and total debits must equal total credits. Accounts have types (asset, liability, income, expense). User wallets are *liabilities* of the platform, because it owes users that money: a debit decreases a wallet and a credit increases it.
 
-Worked example — Alice sends Bob ₹500 and pays a ₹5 fee:
+Worked example — Alice sends Bob ₹500 and pays a ₹2.50 fee (0.5% of the amount, minimum ₹1, maximum ₹10, rounded half up to the paisa):
 
 | Account | Debit | Credit |
 |---|---|---|
-| Alice's wallet | 505 | |
+| Alice's wallet | 502.50 | |
 | Bob's wallet | | 500 |
-| Fee income (system account) | | 5 |
-| **Total** | **505** | **505** |
+| Fee income (system account) | | 2.50 |
+| **Total** | **502.50** | **502.50** |
 
 A ₹1000 top-up debits the platform's bank account (an asset) and credits Alice's wallet. Money never appears from nowhere; it always comes from some account, including system accounts.
 
@@ -137,7 +137,7 @@ Holds (authorize/capture/void), merchant settlements, outbox/webhooks, multi-cur
 
 *Moved into scope by the UPI-style framing:* a simple daily send limit and the `pending` state for collect requests (not full authorize/capture holds).
 
-**Open decisions (yours):** whether P2P payments by VPA carry the ₹5 fee or are free like real UPI; the daily limit amount; whether to attempt the failed-payment auto-reversal and the multi-bank stretch.
+**Open decisions (yours):** whether P2P payments by VPA carry the standard 0.5% fee or are free like real UPI; the daily limit amount; whether to attempt the failed-payment auto-reversal and the multi-bank stretch.
 
 ## Build plan (3 days)
 
