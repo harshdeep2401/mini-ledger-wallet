@@ -24,7 +24,7 @@ mini-ledger-wallet/
 │   ├── 01_schema.sql           tables, CHECK / UNIQUE / FK constraints
 │   ├── 02_triggers.sql         balance check, append-only, frozen-account guard
 │   ├── 03_functions.sql        post_transaction(), top_up(), transfer(), withdraw(), refund()...
-│   ├── 04_idempotency.sql      idempotency key handling
+│   ├── 05_idempotency.sql      idempotency key handling
 │   ├── 05_reconciliation.sql   the "is the ledger healthy?" check
 │   ├── 06_roles.sql            app / reporting / admin roles + privileges
 │   ├── 07_seed.sql             system accounts + demo users

@@ -55,7 +55,7 @@ Frontend (light UI)  →  API server (thin wrapper)  →  PostgreSQL
 | `accounts` | User wallets and seeded system accounts (bank, fee income): type, currency, status (active/frozen/closed), cached balance, whether negative balance is allowed, hashed UPI PIN, failed-PIN counter / lock state, daily send limit |
 | `transactions` | One row per business event (append-only, no status column): type, idempotency key, `reverses_transaction_id`, metadata, unique payment reference (RRN) |
 | `ledger_entries` | The heart of the system: transaction, account, direction (debit/credit), amount (> 0), timestamp |
-| `idempotency_keys` | Key, request hash, stored response, state |
+| `idempotency_keys` | Key, request fingerprint (SHA-256), transaction id; written in the same transaction as the money movement, append-only |
 | `vpas` | Virtual payment addresses (`name@minibank`) mapped to an account; unique, one account can have several |
 | `payment_requests` | Collect requests: payee, payer VPA, amount, status (pending / approved / declined / expired), expiry time, resulting transaction |
 
@@ -82,7 +82,8 @@ Frontend (light UI)  →  API server (thin wrapper)  →  PostgreSQL
 **Idempotency:**
 - Same key + same payload → returns the stored response
 - Same key + different payload → rejected
-- Key still in flight → conflict response
+- Key still in flight → the second request fails immediately with an "already in progress" error (it does not wait)
+- A missing key is rejected; a failed request stores no key, so the same key can be retried
 
 **Reconciliation check** (a SQL view or function):
 - Global total debits = total credits

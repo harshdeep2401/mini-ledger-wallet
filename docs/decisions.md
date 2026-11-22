@@ -69,3 +69,22 @@
 - **D17 Fingerprint:** operation name plus the arguments that change the outcome, nothing else (the key itself is excluded). Built as `jsonb` so key order is stable, hashed with `sha256`.
 - **D18 Design:** same-transaction (design A). The key row is saved in the same database transaction as the money movement, so they commit or roll back together.
 - **D19 Failures:** failed requests store nothing.
+
+## Phase 7: Read functions
+
+- **Balance source:** `get_balance` returns `cached_balance`, because it is a single-row read. Phase 8 reconciliation proves it matches the entries.
+- **Paging method:** keyset pagination. The last row the caller saw is the cursor, and an index finds the next rows directly. `OFFSET` is slow because PostgreSQL still reads and discards every skipped row.
+- **D20 Cursor:** `(created_at, id)`, newest first. `created_at` alone is not enough because all entries of one transaction share it; `id` breaks the tie. "After the cursor" is one row comparison on the pair, not two separate column comparisons.
+- **History index:** `created_at` comes first in the index, then `id`.
+- **D21 History rows:** the columns suggested in tutorial 06. The other party is the other user wallet in the transaction, otherwise a system account such as `BANK`.
+- **Missing account:** `get_balance` and `get_history` raise `P1001`.
+- **Page size:** default 20, maximum 100. Anything outside 1–100 is rejected with `P1001`, and so is a cursor with only one of its two values.
+- **Last page:** fetch one extra row to tell whether another page exists.
+
+## Phase 8: Reconciliation
+
+- **Checks in scope:** (A) global debits = global credits; (B) each account's `cached_balance` = balance recomputed from its entries. Optional checks included: every transaction balances on its own; no account with `allow_negative = false` is negative; every `idempotency_keys` row points at a transaction with the same key; every refund total is within its original transfer's recipient amount.
+- **D22 Output shape:** both. A detail function returns one row per problem (check name, account or transaction id, expected, actual, difference), and a thin summary on top gives the pass/fail boolean for the "Check ledger" button.
+- **Independent recomputation:** balances are recomputed from entries by the check's own sign rule, not by reusing `post_transaction()` code, so a bug in posting cannot hide itself.
+- **Accounts with no entries:** recomputed as 0 and still checked.
+- **Snapshot and locks:** the check reads one consistent snapshot and takes no locks, so it never blocks payments.
