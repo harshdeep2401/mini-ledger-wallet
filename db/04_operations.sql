@@ -11,6 +11,45 @@ INSERT INTO ledger.accounts (code, type)
 VALUES ('FEE_INCOME', 'income')
 ON CONFLICT (code) DO NOTHING;
 
+-- A successful idempotent retry normally returns its saved transaction. This
+-- project also chose to reject that retry if any account in the saved posting
+-- has since been frozen or closed, so check those accounts before returning it.
+CREATE OR REPLACE FUNCTION ledger.assert_transaction_accounts_active(
+    p_transaction_id BIGINT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_account RECORD;
+    v_found_account BOOLEAN := FALSE;
+BEGIN
+    FOR v_account IN
+        SELECT a.id, a.status
+        FROM ledger.accounts AS a
+        WHERE a.id IN (
+            SELECT e.account_id
+            FROM ledger.ledger_entries AS e
+            WHERE e.transaction_id = p_transaction_id
+        )
+        ORDER BY a.id
+        FOR UPDATE OF a
+    LOOP
+        v_found_account := TRUE;
+        IF v_account.status <> 'active' THEN
+            RAISE EXCEPTION 'account % is %; retry cannot be completed',
+                v_account.id, v_account.status
+                USING ERRCODE = 'P1001';
+        END IF;
+    END LOOP;
+
+    IF NOT v_found_account THEN
+        RAISE EXCEPTION 'saved transaction % has no accounts', p_transaction_id
+            USING ERRCODE = 'P1001';
+    END IF;
+END;
+$$;
+
 -- INVARIANT: a user and their liability wallet are created together, so a
 -- successful call cannot leave one without the other.
 CREATE OR REPLACE FUNCTION ledger.create_user_with_wallet(
@@ -147,14 +186,34 @@ $$;
 CREATE OR REPLACE FUNCTION ledger.top_up(
     p_wallet_account_id BIGINT,
     p_amount BIGINT,
-    p_idempotency_key TEXT DEFAULT NULL
+    p_idempotency_key TEXT
 )
 RETURNS BIGINT
 LANGUAGE plpgsql
 AS $$
 DECLARE
     v_bank_account_id BIGINT;
+    v_request_fingerprint BYTEA;
+    v_saved_transaction_id BIGINT;
+    v_transaction_id BIGINT;
 BEGIN
+    v_request_fingerprint := ledger.idempotency_fingerprint(
+        'top_up',
+        jsonb_build_object(
+            'wallet_account_id', p_wallet_account_id,
+            'amount', p_amount
+        )
+    );
+    v_saved_transaction_id := ledger.check_idempotency(
+        p_idempotency_key,
+        v_request_fingerprint
+    );
+
+    IF v_saved_transaction_id IS NOT NULL THEN
+        PERFORM ledger.assert_transaction_accounts_active(v_saved_transaction_id);
+        RETURN v_saved_transaction_id;
+    END IF;
+
     IF p_amount IS NULL OR p_amount <= 0 THEN
         RAISE EXCEPTION 'top-up amount must be a positive number of paise'
             USING ERRCODE = 'P1001';
@@ -191,7 +250,7 @@ BEGIN
     END IF;
 
     -- Top-up legs: debit Bank, credit the wallet.
-    RETURN ledger.post_transaction(
+    v_transaction_id := ledger.post_transaction(
         p_type => 'topup'::ledger.transaction_type,
         p_legs => jsonb_build_array(
             jsonb_build_object(
@@ -207,6 +266,14 @@ BEGIN
         ),
         p_idempotency_key => p_idempotency_key
     );
+
+    PERFORM ledger.record_idempotency(
+        p_idempotency_key,
+        v_request_fingerprint,
+        v_transaction_id
+    );
+
+    RETURN v_transaction_id;
 END;
 $$;
 
@@ -216,14 +283,34 @@ $$;
 CREATE OR REPLACE FUNCTION ledger.withdraw(
     p_wallet_account_id BIGINT,
     p_amount BIGINT,
-    p_idempotency_key TEXT DEFAULT NULL
+    p_idempotency_key TEXT
 )
 RETURNS BIGINT
 LANGUAGE plpgsql
 AS $$
 DECLARE
     v_bank_account_id BIGINT;
+    v_request_fingerprint BYTEA;
+    v_saved_transaction_id BIGINT;
+    v_transaction_id BIGINT;
 BEGIN
+    v_request_fingerprint := ledger.idempotency_fingerprint(
+        'withdraw',
+        jsonb_build_object(
+            'wallet_account_id', p_wallet_account_id,
+            'amount', p_amount
+        )
+    );
+    v_saved_transaction_id := ledger.check_idempotency(
+        p_idempotency_key,
+        v_request_fingerprint
+    );
+
+    IF v_saved_transaction_id IS NOT NULL THEN
+        PERFORM ledger.assert_transaction_accounts_active(v_saved_transaction_id);
+        RETURN v_saved_transaction_id;
+    END IF;
+
     IF p_amount IS NULL OR p_amount <= 0 THEN
         RAISE EXCEPTION 'withdrawal amount must be a positive number of paise'
             USING ERRCODE = 'P1001';
@@ -260,7 +347,7 @@ BEGIN
     END IF;
 
     -- Withdrawal legs: debit the wallet, credit Bank.
-    RETURN ledger.post_transaction(
+    v_transaction_id := ledger.post_transaction(
         p_type => 'withdrawal'::ledger.transaction_type,
         p_legs => jsonb_build_array(
             jsonb_build_object(
@@ -276,6 +363,14 @@ BEGIN
         ),
         p_idempotency_key => p_idempotency_key
     );
+
+    PERFORM ledger.record_idempotency(
+        p_idempotency_key,
+        v_request_fingerprint,
+        v_transaction_id
+    );
+
+    RETURN v_transaction_id;
 END;
 $$;
 
@@ -309,7 +404,7 @@ CREATE OR REPLACE FUNCTION ledger.transfer(
     p_sender_account_id BIGINT,
     p_recipient_account_id BIGINT,
     p_amount BIGINT,
-    p_idempotency_key TEXT DEFAULT NULL
+    p_idempotency_key TEXT
 )
 RETURNS BIGINT
 LANGUAGE plpgsql
@@ -319,7 +414,28 @@ DECLARE
     v_sender_debit NUMERIC;
     v_wallet_count BIGINT;
     v_fee_account_id BIGINT;
+    v_request_fingerprint BYTEA;
+    v_saved_transaction_id BIGINT;
+    v_transaction_id BIGINT;
 BEGIN
+    v_request_fingerprint := ledger.idempotency_fingerprint(
+        'transfer',
+        jsonb_build_object(
+            'sender_account_id', p_sender_account_id,
+            'recipient_account_id', p_recipient_account_id,
+            'amount', p_amount
+        )
+    );
+    v_saved_transaction_id := ledger.check_idempotency(
+        p_idempotency_key,
+        v_request_fingerprint
+    );
+
+    IF v_saved_transaction_id IS NOT NULL THEN
+        PERFORM ledger.assert_transaction_accounts_active(v_saved_transaction_id);
+        RETURN v_saved_transaction_id;
+    END IF;
+
     IF p_amount IS NULL OR p_amount <= 0 THEN
         RAISE EXCEPTION 'transfer amount must be a positive number of paise'
             USING ERRCODE = 'P1001';
@@ -369,7 +485,7 @@ BEGIN
     END IF;
 
     -- Transfer legs: debit amount+fee, credit amount, credit the fee.
-    RETURN ledger.post_transaction(
+    v_transaction_id := ledger.post_transaction(
         p_type => 'transfer'::ledger.transaction_type,
         p_legs => jsonb_build_array(
             jsonb_build_object(
@@ -390,6 +506,14 @@ BEGIN
         ),
         p_idempotency_key => p_idempotency_key
     );
+
+    PERFORM ledger.record_idempotency(
+        p_idempotency_key,
+        v_request_fingerprint,
+        v_transaction_id
+    );
+
+    RETURN v_transaction_id;
 END;
 $$;
 
@@ -400,7 +524,7 @@ $$;
 CREATE OR REPLACE FUNCTION ledger.refund(
     p_original_transaction_id BIGINT,
     p_amount BIGINT,
-    p_idempotency_key TEXT DEFAULT NULL
+    p_idempotency_key TEXT
 )
 RETURNS BIGINT
 LANGUAGE plpgsql
@@ -412,7 +536,27 @@ DECLARE
     v_original_recipient_amount BIGINT;
     v_refunded_amount NUMERIC;
     v_matching_legs BIGINT;
+    v_request_fingerprint BYTEA;
+    v_saved_transaction_id BIGINT;
+    v_transaction_id BIGINT;
 BEGIN
+    v_request_fingerprint := ledger.idempotency_fingerprint(
+        'refund',
+        jsonb_build_object(
+            'original_transaction_id', p_original_transaction_id,
+            'amount', p_amount
+        )
+    );
+    v_saved_transaction_id := ledger.check_idempotency(
+        p_idempotency_key,
+        v_request_fingerprint
+    );
+
+    IF v_saved_transaction_id IS NOT NULL THEN
+        PERFORM ledger.assert_transaction_accounts_active(v_saved_transaction_id);
+        RETURN v_saved_transaction_id;
+    END IF;
+
     IF p_original_transaction_id IS NULL THEN
         RAISE EXCEPTION 'original transaction ID is required'
             USING ERRCODE = 'P1001';
@@ -490,7 +634,7 @@ BEGIN
     END IF;
 
     -- Refund only the recipient's amount leg; the transfer fee is not returned.
-    RETURN ledger.post_transaction(
+    v_transaction_id := ledger.post_transaction(
         p_type => 'refund'::ledger.transaction_type,
         p_legs => jsonb_build_array(
             jsonb_build_object(
@@ -507,5 +651,13 @@ BEGIN
         p_reverses_transaction_id => p_original_transaction_id,
         p_idempotency_key => p_idempotency_key
     );
+
+    PERFORM ledger.record_idempotency(
+        p_idempotency_key,
+        v_request_fingerprint,
+        v_transaction_id
+    );
+
+    RETURN v_transaction_id;
 END;
 $$;

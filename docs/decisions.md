@@ -55,3 +55,17 @@
 - **Freeze rules:** Only `active → frozen` and `frozen → active` are legal. System accounts and closed accounts cannot be frozen or unfrozen through these functions.
 - **Duplicate email:** `create_user_with_wallet` catches the unique violation and raises `P1001`. Emails are trimmed and lower-cased before saving.
 - **Idempotency key:** Every money mover already accepts an optional `p_idempotency_key` and passes it to `post_transaction()`; Phase 6 adds the key table and replay logic.
+
+- **Idempotency key (superseded):** the key was optional in Phase 5; Phase 6 now requires it on every money mover (see below).
+
+## Phase 6: Idempotency
+
+- **Missing key:** a money mover called without a key is rejected with `P1001`. Empty or over-200-character keys are also rejected.
+- **Same key, same request:** returns the saved transaction id; nothing is posted again.
+- **Same key, different amount or different operation:** rejected with `P1001`.
+- **Failed first attempt:** leaves no key. A retry with the same key runs as a new request.
+- **Replay after the wallet was frozen:** the frozen-account error wins over the saved result.
+- **Concurrent requests with the same key:** the second fails fast ("already in progress") using a transaction-scoped advisory lock.
+- **D17 Fingerprint:** operation name plus the arguments that change the outcome, nothing else (the key itself is excluded). Built as `jsonb` so key order is stable, hashed with `sha256`.
+- **D18 Design:** same-transaction (design A). The key row is saved in the same database transaction as the money movement, so they commit or roll back together.
+- **D19 Failures:** failed requests store nothing.

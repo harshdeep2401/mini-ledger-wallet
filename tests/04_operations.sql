@@ -127,7 +127,7 @@ BEGIN
     -- Top up ₹1,000 = 100,000 paise: debit Bank and credit the sender wallet.
     SELECT cached_balance INTO bank_balance
     FROM ledger.accounts WHERE id = bank_account_id;
-    SELECT ledger.top_up(sender_wallet_id, 100000)
+    SELECT ledger.top_up(sender_wallet_id, 100000, 'ops-topup-sender')
     INTO topup_transaction_id;
 
     IF (SELECT type FROM ledger.transactions WHERE id = topup_transaction_id) <> 'topup'
@@ -142,7 +142,7 @@ BEGIN
     expected_fee := ledger.calculate_fee(50000);
     SELECT cached_balance INTO fee_balance
     FROM ledger.accounts WHERE id = fee_account_id;
-    SELECT ledger.transfer(sender_wallet_id, recipient_wallet_id, 50000)
+    SELECT ledger.transfer(sender_wallet_id, recipient_wallet_id, 50000, 'ops-transfer-main')
     INTO transfer_transaction_id;
 
     IF expected_fee <> 250
@@ -165,7 +165,7 @@ BEGIN
     SELECT COUNT(*) INTO entry_count_before FROM ledger.ledger_entries;
     rejected := FALSE;
     BEGIN
-        PERFORM ledger.transfer(sender_wallet_id, recipient_wallet_id, sender_balance);
+        PERFORM ledger.transfer(sender_wallet_id, recipient_wallet_id, sender_balance, 'ops-transfer-insufficient-fee');
     EXCEPTION
         WHEN SQLSTATE 'P1001' THEN rejected := TRUE;
     END;
@@ -180,7 +180,7 @@ BEGIN
     -- A wallet cannot transfer to itself.
     rejected := FALSE;
     BEGIN
-        PERFORM ledger.transfer(sender_wallet_id, sender_wallet_id, 1000);
+        PERFORM ledger.transfer(sender_wallet_id, sender_wallet_id, 1000, 'ops-transfer-self');
     EXCEPTION
         WHEN SQLSTATE 'P1001' THEN rejected := TRUE;
     END;
@@ -192,7 +192,7 @@ BEGIN
     -- Neither endpoint of a transfer may be a system account.
     rejected := FALSE;
     BEGIN
-        PERFORM ledger.transfer(sender_wallet_id, bank_account_id, 1000);
+        PERFORM ledger.transfer(sender_wallet_id, bank_account_id, 1000, 'ops-transfer-to-bank');
     EXCEPTION
         WHEN SQLSTATE 'P1001' THEN rejected := TRUE;
     END;
@@ -202,7 +202,7 @@ BEGIN
 
     rejected := FALSE;
     BEGIN
-        PERFORM ledger.transfer(bank_account_id, recipient_wallet_id, 1000);
+        PERFORM ledger.transfer(bank_account_id, recipient_wallet_id, 1000, 'ops-transfer-from-bank');
     EXCEPTION
         WHEN SQLSTATE 'P1001' THEN rejected := TRUE;
     END;
@@ -214,7 +214,7 @@ BEGIN
     -- Withdraw ₹200 = 20,000 paise from the sender.
     sender_balance := (SELECT cached_balance FROM ledger.accounts WHERE id = sender_wallet_id);
     bank_balance := (SELECT cached_balance FROM ledger.accounts WHERE id = bank_account_id);
-    SELECT ledger.withdraw(sender_wallet_id, 20000) INTO operation_transaction_id;
+    SELECT ledger.withdraw(sender_wallet_id, 20000, 'ops-withdraw-200') INTO operation_transaction_id;
     IF (SELECT type FROM ledger.transactions WHERE id = operation_transaction_id) <> 'withdrawal'
        OR (SELECT cached_balance FROM ledger.accounts WHERE id = sender_wallet_id) <> sender_balance - 20000
        OR (SELECT cached_balance FROM ledger.accounts WHERE id = bank_account_id) <> bank_balance - 20000 THEN
@@ -229,7 +229,7 @@ BEGIN
     SELECT COUNT(*) INTO entry_count_before FROM ledger.ledger_entries;
     rejected := FALSE;
     BEGIN
-        PERFORM ledger.withdraw(sender_wallet_id, sender_balance + 1);
+        PERFORM ledger.withdraw(sender_wallet_id, sender_balance + 1, 'ops-withdraw-too-much');
     EXCEPTION
         WHEN SQLSTATE 'P1001' THEN rejected := TRUE;
     END;
@@ -246,7 +246,7 @@ BEGIN
     -- credited to FEE_INCOME.
     fee_balance := (SELECT cached_balance FROM ledger.accounts WHERE id = fee_account_id);
     sender_balance := (SELECT cached_balance FROM ledger.accounts WHERE id = sender_wallet_id);
-    SELECT ledger.refund(transfer_transaction_id, 50000)
+    SELECT ledger.refund(transfer_transaction_id, 50000, 'ops-refund-full')
     INTO operation_transaction_id;
     IF (SELECT type FROM ledger.transactions WHERE id = operation_transaction_id) <> 'refund'
        OR (SELECT reverses_transaction_id FROM ledger.transactions WHERE id = operation_transaction_id)
@@ -260,9 +260,9 @@ BEGIN
 
     -- Partial refund: refund 6,000 of a 10,000-paisa transfer, then try to
     -- refund 5,000 more (which would exceed the original recipient credit).
-    SELECT ledger.transfer(sender_wallet_id, recipient_wallet_id, 10000)
+    SELECT ledger.transfer(sender_wallet_id, recipient_wallet_id, 10000, 'ops-transfer-partial')
     INTO partial_transfer_id;
-    SELECT ledger.refund(partial_transfer_id, 6000)
+    SELECT ledger.refund(partial_transfer_id, 6000, 'ops-refund-partial')
     INTO partial_refund_id;
     IF (SELECT reverses_transaction_id FROM ledger.transactions WHERE id = partial_refund_id)
        <> partial_transfer_id
@@ -274,7 +274,7 @@ BEGIN
     SELECT COUNT(*) INTO entry_count_before FROM ledger.ledger_entries;
     rejected := FALSE;
     BEGIN
-        PERFORM ledger.refund(partial_transfer_id, 5000);
+        PERFORM ledger.refund(partial_transfer_id, 5000, 'ops-refund-overcap');
     EXCEPTION
         WHEN SQLSTATE 'P1001' THEN rejected := TRUE;
     END;
@@ -289,7 +289,7 @@ BEGIN
     -- A refund cannot itself be refunded, and a top-up is not refundable.
     rejected := FALSE;
     BEGIN
-        PERFORM ledger.refund(partial_refund_id, 1);
+        PERFORM ledger.refund(partial_refund_id, 1, 'ops-refund-of-refund');
     EXCEPTION
         WHEN SQLSTATE 'P1001' THEN rejected := TRUE;
     END;
@@ -299,7 +299,7 @@ BEGIN
 
     rejected := FALSE;
     BEGIN
-        PERFORM ledger.refund(topup_transaction_id, 1);
+        PERFORM ledger.refund(topup_transaction_id, 1, 'ops-refund-topup');
     EXCEPTION
         WHEN SQLSTATE 'P1001' THEN rejected := TRUE;
     END;
@@ -310,14 +310,14 @@ BEGIN
 
     -- If the recipient has spent the full amount, the normal posting overdraft
     -- check rejects the refund and preserves the balances and transaction log.
-    SELECT ledger.transfer(sender_wallet_id, spent_wallet_id, 10000)
+    SELECT ledger.transfer(sender_wallet_id, spent_wallet_id, 10000, 'ops-transfer-spent')
     INTO spent_transfer_id;
-    PERFORM ledger.withdraw(spent_wallet_id, 10000);
+    PERFORM ledger.withdraw(spent_wallet_id, 10000, 'ops-withdraw-spent');
     SELECT COUNT(*) INTO transaction_count_before FROM ledger.transactions;
     SELECT COUNT(*) INTO entry_count_before FROM ledger.ledger_entries;
     rejected := FALSE;
     BEGIN
-        PERFORM ledger.refund(spent_transfer_id, 10000);
+        PERFORM ledger.refund(spent_transfer_id, 10000, 'ops-refund-spent-funds');
     EXCEPTION
         WHEN SQLSTATE 'P1001' THEN rejected := TRUE;
     END;
@@ -334,7 +334,7 @@ BEGIN
     PERFORM ledger.freeze_account(recipient_wallet_id);
     rejected := FALSE;
     BEGIN
-        PERFORM ledger.transfer(sender_wallet_id, recipient_wallet_id, 100);
+        PERFORM ledger.transfer(sender_wallet_id, recipient_wallet_id, 100, 'ops-transfer-to-frozen');
     EXCEPTION
         WHEN SQLSTATE 'P1001' THEN rejected := TRUE;
     END;
@@ -344,7 +344,7 @@ BEGIN
 
     rejected := FALSE;
     BEGIN
-        PERFORM ledger.transfer(recipient_wallet_id, sender_wallet_id, 100);
+        PERFORM ledger.transfer(recipient_wallet_id, sender_wallet_id, 100, 'ops-transfer-from-frozen');
     EXCEPTION
         WHEN SQLSTATE 'P1001' THEN rejected := TRUE;
     END;
@@ -357,7 +357,7 @@ BEGIN
     IF ledger.unfreeze_account(recipient_wallet_id) <> recipient_wallet_id THEN
         RAISE EXCEPTION 'TEST FAILED: unfreeze_account returned the wrong account ID';
     END IF;
-    PERFORM ledger.transfer(sender_wallet_id, recipient_wallet_id, 100);
+    PERFORM ledger.transfer(sender_wallet_id, recipient_wallet_id, 100, 'ops-transfer-after-unfreeze');
     RAISE NOTICE 'TEST PASSED: unfreezing restores the wallet transfer path';
 
     -- Illegal transitions: freezing an already frozen wallet and unfreezing an
