@@ -1,0 +1,11 @@
+[
+  {
+    "captured_on": "2026-11-21T18:30:00.000Z",
+    "transaction_count": "127000",
+    "entry_count": "374000",
+    "account_count": "1002",
+    "fee_income_entry_count": "120000",
+    "entries_total_size": "64 MB",
+    "entries_index_size": "36 MB"
+  }
+]

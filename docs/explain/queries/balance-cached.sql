@@ -1,0 +1,2 @@
+EXPLAIN (ANALYZE, BUFFERS, VERBOSE)
+SELECT ledger.get_balance($1::BIGINT);

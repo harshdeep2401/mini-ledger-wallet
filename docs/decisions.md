@@ -88,3 +88,37 @@
 - **Independent recomputation:** balances are recomputed from entries by the check's own sign rule, not by reusing `post_transaction()` code, so a bug in posting cannot hide itself.
 - **Accounts with no entries:** recomputed as 0 and still checked.
 - **Snapshot and locks:** the check reads one consistent snapshot and takes no locks, so it never blocks payments.
+
+## Phase 9: Roles and privileges
+
+- **Roles:** an owner role that owns the schema, tables and functions, plus `ledger_app`, `ledger_reporting` and `ledger_admin`. Nobody uses the owner day to day.
+- **D23 App role:** can only `EXECUTE` the public API functions: the money movers, `create_user_with_wallet`, `get_balance`, `get_history` and `calculate_fee`. `calculate_fee` is pure and the UI can use it to preview the fee. It has no access to any table (no `SELECT`, `INSERT`, `UPDATE`, `DELETE` or `TRUNCATE`) and is not the owner, so it cannot disable triggers.
+- **Internal helpers are closed:** `post_transaction`, `check_idempotency`, `record_idempotency`, `idempotency_fingerprint`, `assert_transaction_accounts_active` and the trigger functions cannot be called by the app role. Calling `post_transaction` directly would skip the rules in `transfer()` (fee, self-transfer, account kinds).
+- **Freeze and unfreeze:** admin only, not the app role.
+- **`SECURITY DEFINER`:** the public functions run with the owner's rights so the app needs no table access. Every one pins `search_path`, with `pg_catalog` first, and all names inside are schema-qualified. Trigger functions and other functions that need no extra rights stay `SECURITY INVOKER`.
+- **`PUBLIC` access:** the default `EXECUTE` for `PUBLIC` is revoked on existing and future functions, and `PUBLIC` gets no access to the schema. Each role gets schema `USAGE` and `EXECUTE` on exactly its list, and a new function is closed until it is granted.
+- **D24 Reporting role:** no table access; it can call the read functions, `reconciliation_issues()` and `reconciliation_summary()`, which run as the owner. It cannot call any money-moving function. Sensitive columns such as the planned PIN hash are never visible to it.
+- **Admin role:** day-to-day maintenance without being the owner: freeze and unfreeze accounts and run reconciliation.
+- **`demo` schema:** the deliberately broken functions (D13) are not callable by the app role.
+- **Re-running:** `db/08_roles.sql` creates roles only if they do not exist, because `db:reset` drops the schema but not cluster-wide roles.
+- **Passwords:** never committed to git; login credentials for app, reporting and admin roles are set out of band and kept in `.env`.
+- **Login roles:** `ledger_owner` is `NOLOGIN`; `ledger_app`, `ledger_reporting` and `ledger_admin` are separate `LOGIN` roles. Their passwords are set out of band and kept only in `.env`.
+- **Testing roles:** tests become a role with `SET LOCAL ROLE`, expect "permission denied" (a different error class from `P1001`), and always include a positive test that the allowed calls really work.
+- **Role attributes:** only `LOGIN`/`NOLOGIN`, `NOCREATEDB` and `NOCREATEROLE` are set explicitly. Neon refuses `NOSUPERUSER`, `NOREPLICATION` and `NOBYPASSRLS` for a non-superuser, and `CREATE ROLE` leaves them off by default.
+- **Functions in later files:** created after `SET ROLE ledger_owner`, so the closed-by-default privileges apply.
+
+## Phase 10: Seed data and performance
+
+- **Seed placement:** the seed stays separate from the numbered `db/` files, so `db:reset` and `db:apply` leave the ledger empty. This keeps `tests/07_reconciliation.sql`'s "fresh database" check valid. The seed is run as its own deliberate step.
+- **D25 Big seed:** way 1, fully honest. The load goes through the operation functions in batches, one database transaction per batch, so every rule, lock, idempotency check and cached-balance update is exercised. No direct inserts into the ledger tables and no disabled triggers.
+- **Reconciliation proves the seed:** `reconciliation_summary()` must report healthy after the demo seed and after the big load.
+- **Demo seed:** built only from operation functions, each call with an idempotency key. Alice starts at a known balance so the demo arithmetic is easy (₹500 transfer, ₹2.50 fee).
+- **Realistic data:** `FEE_INCOME` is hot because each transfer credits its fee; `BANK` appears in top-ups and withdrawals because transfers do not touch it. The workload is mostly transfers with some top-ups and withdrawals, and no wallet goes negative.
+- **Timestamps:** because the load goes through the functions, `created_at` is real time, so entries of different batches differ by seconds rather than months. Accepted; the cursor's `created_at` half is exercised by that spread, not by synthetic dates.
+- **Size:** chosen to fit Neon's storage and compute limits, a few hundred thousand entries if 1M does not fit. The actual number is recorded in `docs/performance.md`.
+- **Performance seed target:** 1,000 wallets, 1,000 top-ups, 120,000 transfers and 6,000 withdrawals (127,000 transactions; 374,000 entries). Every wallet receives ₹10,000 first; generated outgoing transfers including fees and withdrawals stay below that amount. Stable emails and idempotency keys make reruns resume-safe.
+- **Measurements:** history query with and without the `(account_id, created_at, id)` index; `OFFSET` against keyset on a deep page; keyset page 1 against a deep page; reconciliation time on the full data; `get_balance` against summing a hot account's entries.
+- **How to measure:** `ANALYZE` after the load; `EXPLAIN (ANALYZE, BUFFERS)`; repeat each query and report the steady (warm) timing; benchmark the underlying query with literal values, since the function hides its plan; always restore the index afterwards.
+- **Evidence:** raw plans saved in `docs/explain/`, summarised in `docs/performance.md` with the query, timings and one sentence of interpretation each.
+- **Reported numbers:** three runs per query; report the steady runs 2–3 (run 1 is cold). Even with the index, `OFFSET 100000` stays slow, so keyset is the supported paging method (measured: 225 ms vs 0.09 ms).
+- **Not a test file:** the history walk (`db:check-history`) is a one-off script because it needs the large dataset; recorded as a limitation in `docs/invariants.md`.

@@ -27,15 +27,14 @@ BEGIN
         RAISE EXCEPTION 'TEST FAILED: BANK system account is missing';
     END IF;
 
-    -- The test suite runs against a freshly applied schema; before fixtures,
-    -- only the two structural system accounts should exist and the ledger is empty.
-    IF (SELECT COUNT(*) FROM ledger.accounts) <> 2
-       OR (SELECT COUNT(*) FROM ledger.transactions) <> 0
+    -- Seeds are deliberately separate from db:reset, but may already have been
+    -- run. Check that the starting state is healthy without requiring it empty.
+    IF (SELECT COUNT(*) FROM ledger.accounts WHERE code IN ('BANK', 'FEE_INCOME')) <> 2
        OR NOT ledger.reconciliation_summary()
        OR EXISTS (SELECT 1 FROM ledger.reconciliation_issues()) THEN
-        RAISE EXCEPTION 'TEST FAILED: a fresh database did not reconcile as healthy';
+        RAISE EXCEPTION 'TEST FAILED: the starting ledger is missing system accounts or is unhealthy';
     END IF;
-    RAISE NOTICE 'TEST PASSED: fresh database with system accounts is healthy';
+    RAISE NOTICE 'TEST PASSED: starting ledger is healthy with both system accounts';
 
     SELECT ledger.create_user_with_wallet('Reconcile Sender', 'reconcile-sender-' || email_suffix || '@example.test')
     INTO sender_user_id;

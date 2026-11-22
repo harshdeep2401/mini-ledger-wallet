@@ -1,0 +1,89 @@
+--- run 1 of 3 ---
+Limit  (cost=0.72..10.31 rows=20 width=72) (actual time=0.067..0.112 rows=20.00 loops=1)
+  Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
+  Buffers: shared hit=65
+  ->  Nested Loop  (cost=0.72..58383.33 rows=121787 width=72) (actual time=0.066..0.108 rows=20.00 loops=1)
+        Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
+        Inner Unique: true
+        Buffers: shared hit=65
+        ->  Index Scan using idx_ledger_entries_account_history on ledger.ledger_entries e  (cost=0.42..19761.41 rows=121787 width=36) (actual time=0.012..0.018 rows=20.00 loops=1)
+              Output: e.id, e.transaction_id, e.account_id, e.direction, e.amount, e.created_at
+              Index Cond: (e.account_id = '2'::bigint)
+              Index Searches: 1
+              Buffers: shared hit=5
+        ->  Memoize  (cost=0.30..0.37 rows=1 width=44) (actual time=0.004..0.004 rows=1.00 loops=20)
+              Output: t.type, t.metadata, t.id
+              Cache Key: e.transaction_id
+              Cache Mode: logical
+              Hits: 0  Misses: 20  Evictions: 0  Overflows: 0  Memory Usage: 3kB
+              Buffers: shared hit=60
+              ->  Index Scan using transactions_pkey on ledger.transactions t  (cost=0.29..0.36 rows=1 width=44) (actual time=0.001..0.001 rows=1.00 loops=20)
+                    Output: t.type, t.metadata, t.id
+                    Index Cond: (t.id = e.transaction_id)
+                    Index Searches: 20
+                    Buffers: shared hit=60
+Query Identifier: 7075874531483180280
+Planning:
+  Buffers: shared hit=37
+Planning Time: 0.391 ms
+Execution Time: 0.149 ms
+
+--- run 2 of 3 ---
+Limit  (cost=0.72..10.31 rows=20 width=72) (actual time=0.070..0.114 rows=20.00 loops=1)
+  Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
+  Buffers: shared hit=65
+  ->  Nested Loop  (cost=0.72..58383.33 rows=121787 width=72) (actual time=0.069..0.111 rows=20.00 loops=1)
+        Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
+        Inner Unique: true
+        Buffers: shared hit=65
+        ->  Index Scan using idx_ledger_entries_account_history on ledger.ledger_entries e  (cost=0.42..19761.41 rows=121787 width=36) (actual time=0.012..0.020 rows=20.00 loops=1)
+              Output: e.id, e.transaction_id, e.account_id, e.direction, e.amount, e.created_at
+              Index Cond: (e.account_id = '2'::bigint)
+              Index Searches: 1
+              Buffers: shared hit=5
+        ->  Memoize  (cost=0.30..0.37 rows=1 width=44) (actual time=0.004..0.004 rows=1.00 loops=20)
+              Output: t.type, t.metadata, t.id
+              Cache Key: e.transaction_id
+              Cache Mode: logical
+              Hits: 0  Misses: 20  Evictions: 0  Overflows: 0  Memory Usage: 3kB
+              Buffers: shared hit=60
+              ->  Index Scan using transactions_pkey on ledger.transactions t  (cost=0.29..0.36 rows=1 width=44) (actual time=0.001..0.001 rows=1.00 loops=20)
+                    Output: t.type, t.metadata, t.id
+                    Index Cond: (t.id = e.transaction_id)
+                    Index Searches: 20
+                    Buffers: shared hit=60
+Query Identifier: 7075874531483180280
+Planning:
+  Buffers: shared hit=19
+Planning Time: 0.311 ms
+Execution Time: 0.154 ms
+
+--- run 3 of 3 ---
+Limit  (cost=0.72..10.31 rows=20 width=72) (actual time=0.067..0.112 rows=20.00 loops=1)
+  Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
+  Buffers: shared hit=65
+  ->  Nested Loop  (cost=0.72..58383.33 rows=121787 width=72) (actual time=0.066..0.109 rows=20.00 loops=1)
+        Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
+        Inner Unique: true
+        Buffers: shared hit=65
+        ->  Index Scan using idx_ledger_entries_account_history on ledger.ledger_entries e  (cost=0.42..19761.41 rows=121787 width=36) (actual time=0.013..0.020 rows=20.00 loops=1)
+              Output: e.id, e.transaction_id, e.account_id, e.direction, e.amount, e.created_at
+              Index Cond: (e.account_id = '2'::bigint)
+              Index Searches: 1
+              Buffers: shared hit=5
+        ->  Memoize  (cost=0.30..0.37 rows=1 width=44) (actual time=0.004..0.004 rows=1.00 loops=20)
+              Output: t.type, t.metadata, t.id
+              Cache Key: e.transaction_id
+              Cache Mode: logical
+              Hits: 0  Misses: 20  Evictions: 0  Overflows: 0  Memory Usage: 3kB
+              Buffers: shared hit=60
+              ->  Index Scan using transactions_pkey on ledger.transactions t  (cost=0.29..0.36 rows=1 width=44) (actual time=0.001..0.001 rows=1.00 loops=20)
+                    Output: t.type, t.metadata, t.id
+                    Index Cond: (t.id = e.transaction_id)
+                    Index Searches: 20
+                    Buffers: shared hit=60
+Query Identifier: 7075874531483180280
+Planning:
+  Buffers: shared hit=19
+Planning Time: 0.312 ms
+Execution Time: 0.148 ms

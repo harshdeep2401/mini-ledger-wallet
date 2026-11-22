@@ -1,0 +1,23 @@
+--- run 1 of 3 ---
+Result  (cost=0.00..0.26 rows=1 width=1) (actual time=953.031..953.032 rows=1.00 loops=1)
+  Output: ledger.reconciliation_summary()
+  Buffers: shared hit=26114, temp read=806 written=806
+Query Identifier: -6292511596690606304
+Planning Time: 0.024 ms
+Execution Time: 953.057 ms
+
+--- run 2 of 3 ---
+Result  (cost=0.00..0.26 rows=1 width=1) (actual time=959.937..959.937 rows=1.00 loops=1)
+  Output: ledger.reconciliation_summary()
+  Buffers: shared hit=25960, temp read=806 written=806
+Query Identifier: -6292511596690606304
+Planning Time: 0.022 ms
+Execution Time: 959.960 ms
+
+--- run 3 of 3 ---
+Result  (cost=0.00..0.26 rows=1 width=1) (actual time=928.501..928.502 rows=1.00 loops=1)
+  Output: ledger.reconciliation_summary()
+  Buffers: shared hit=25960, temp read=806 written=806
+Query Identifier: -6292511596690606304
+Planning Time: 0.021 ms
+Execution Time: 928.524 ms

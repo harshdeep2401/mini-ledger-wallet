@@ -22,6 +22,11 @@ coverage/
 .idea/
 .vscode/
 
-tutorials/
+# Local logs and Claude Code local settings
+*.log
+.claude/settings.local.json
 
+# Personal notes
 questions.md
+
+tutorials/

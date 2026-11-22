@@ -1,0 +1,64 @@
+--- run 1 of 3 ---
+GroupAggregate  (cost=0.28..11832.92 rows=1 width=44) (actual time=64.153..64.154 rows=1.00 loops=1)
+  Output: COALESCE(sum(CASE WHEN (((a.type = ANY ('{asset,expense}'::ledger.account_type[])) AND (e.direction = 'debit'::ledger.ledger_direction)) OR ((a.type = ANY ('{liability,income}'::ledger.account_type[])) AND (e.direction = 'credit'::ledger.ledger_direction))) THEN (e.amount)::numeric ELSE (- (e.amount)::numeric) END), '0'::numeric), a.id, a.type
+  Buffers: shared hit=3499
+  ->  Nested Loop Left Join  (cost=0.28..9397.16 rows=121787 width=24) (actual time=0.147..40.096 rows=120000.00 loops=1)
+        Output: a.type, e.direction, e.amount, a.id
+        Buffers: shared hit=3499
+        ->  Index Scan using accounts_pkey on ledger.accounts a  (cost=0.28..8.29 rows=1 width=12) (actual time=0.009..0.012 rows=1.00 loops=1)
+              Output: a.id, a.user_id, a.code, a.type, a.currency, a.status, a.allow_negative, a.cached_balance, a.created_at
+              Index Cond: (a.id = '2'::bigint)
+              Index Searches: 1
+              Buffers: shared hit=3
+        ->  Seq Scan on ledger.ledger_entries e  (cost=0.00..8171.00 rows=121787 width=20) (actual time=0.137..25.909 rows=120000.00 loops=1)
+              Output: e.id, e.transaction_id, e.account_id, e.direction, e.amount, e.created_at
+              Filter: (e.account_id = '2'::bigint)
+              Rows Removed by Filter: 254000
+              Buffers: shared hit=3496
+Query Identifier: 1643703690826792446
+Planning:
+  Buffers: shared hit=3
+Planning Time: 0.188 ms
+Execution Time: 64.199 ms
+
+--- run 2 of 3 ---
+GroupAggregate  (cost=0.28..11832.92 rows=1 width=44) (actual time=68.077..68.078 rows=1.00 loops=1)
+  Output: COALESCE(sum(CASE WHEN (((a.type = ANY ('{asset,expense}'::ledger.account_type[])) AND (e.direction = 'debit'::ledger.ledger_direction)) OR ((a.type = ANY ('{liability,income}'::ledger.account_type[])) AND (e.direction = 'credit'::ledger.ledger_direction))) THEN (e.amount)::numeric ELSE (- (e.amount)::numeric) END), '0'::numeric), a.id, a.type
+  Buffers: shared hit=3499
+  ->  Nested Loop Left Join  (cost=0.28..9397.16 rows=121787 width=24) (actual time=0.131..44.852 rows=120000.00 loops=1)
+        Output: a.type, e.direction, e.amount, a.id
+        Buffers: shared hit=3499
+        ->  Index Scan using accounts_pkey on ledger.accounts a  (cost=0.28..8.29 rows=1 width=12) (actual time=0.019..0.022 rows=1.00 loops=1)
+              Output: a.id, a.user_id, a.code, a.type, a.currency, a.status, a.allow_negative, a.cached_balance, a.created_at
+              Index Cond: (a.id = '2'::bigint)
+              Index Searches: 1
+              Buffers: shared hit=3
+        ->  Seq Scan on ledger.ledger_entries e  (cost=0.00..8171.00 rows=121787 width=20) (actual time=0.110..30.255 rows=120000.00 loops=1)
+              Output: e.id, e.transaction_id, e.account_id, e.direction, e.amount, e.created_at
+              Filter: (e.account_id = '2'::bigint)
+              Rows Removed by Filter: 254000
+              Buffers: shared hit=3496
+Query Identifier: 1643703690826792446
+Planning Time: 0.180 ms
+Execution Time: 68.127 ms
+
+--- run 3 of 3 ---
+GroupAggregate  (cost=0.28..11832.92 rows=1 width=44) (actual time=62.864..62.865 rows=1.00 loops=1)
+  Output: COALESCE(sum(CASE WHEN (((a.type = ANY ('{asset,expense}'::ledger.account_type[])) AND (e.direction = 'debit'::ledger.ledger_direction)) OR ((a.type = ANY ('{liability,income}'::ledger.account_type[])) AND (e.direction = 'credit'::ledger.ledger_direction))) THEN (e.amount)::numeric ELSE (- (e.amount)::numeric) END), '0'::numeric), a.id, a.type
+  Buffers: shared hit=3499
+  ->  Nested Loop Left Join  (cost=0.28..9397.16 rows=121787 width=24) (actual time=0.162..39.846 rows=120000.00 loops=1)
+        Output: a.type, e.direction, e.amount, a.id
+        Buffers: shared hit=3499
+        ->  Index Scan using accounts_pkey on ledger.accounts a  (cost=0.28..8.29 rows=1 width=12) (actual time=0.021..0.025 rows=1.00 loops=1)
+              Output: a.id, a.user_id, a.code, a.type, a.currency, a.status, a.allow_negative, a.cached_balance, a.created_at
+              Index Cond: (a.id = '2'::bigint)
+              Index Searches: 1
+              Buffers: shared hit=3
+        ->  Seq Scan on ledger.ledger_entries e  (cost=0.00..8171.00 rows=121787 width=20) (actual time=0.140..25.730 rows=120000.00 loops=1)
+              Output: e.id, e.transaction_id, e.account_id, e.direction, e.amount, e.created_at
+              Filter: (e.account_id = '2'::bigint)
+              Rows Removed by Filter: 254000
+              Buffers: shared hit=3496
+Query Identifier: 1643703690826792446
+Planning Time: 0.157 ms
+Execution Time: 62.914 ms
