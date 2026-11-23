@@ -9,9 +9,18 @@
     "db:seed:demo": "node --env-file=.env scripts/seed-demo.mjs",
     "db:seed:performance": "node --env-file=.env scripts/seed-performance.mjs",
     "db:explain": "node --env-file=.env scripts/capture-explain.mjs",
-    "db:check-history": "node --env-file=.env scripts/check-history-walk.mjs"
+    "db:check-history": "node --env-file=.env scripts/check-history-walk.mjs",
+    "demo:setup": "node --env-file=.env demos/concurrency.mjs setup",
+    "demo:teardown": "node --env-file=.env demos/concurrency.mjs teardown",
+    "demo:concurrency": "node --env-file=.env demos/concurrency.mjs all 5",
+    "server:setup-logins": "node --env-file=.env scripts/setup-server-logins.mjs",
+    "server": "node --env-file=.env server/server.js",
+    "client:dev": "npm --prefix client run dev",
+    "client:build": "npm --prefix client run build",
+    "client:install": "npm --prefix client install"
   },
   "dependencies": {
+    "express": "^5.3.0",
     "pg": "^8.23.1"
   }
 }

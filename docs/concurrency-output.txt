@@ -1,0 +1,171 @@
+> demo:concurrency
+> node --env-file=.env demos/concurrency.mjs all 5
+=== Run 1 of 5 ===
+Double-spend: two ₹800 withdrawals race against a ₹1,000 wallet
+  PASS  unsafe withdraw: both succeed (the bug)
+        ✓ 2 of 2 withdrawals succeeded
+        ✓ wallet balance is ₹-600.00 (should never be negative)
+  PASS  real withdraw: exactly one succeeds
+        ✓ 1 of 2 withdrawals succeeded
+        ✓ the other was refused: account 1108 has insufficient funds: balance 20000, change -80000
+        ✓ wallet balance is ₹200.00
+  PASS  ledger is healthy afterwards
+        ✓ reconciliation_summary() = true
+Deadlock: A->B and B->A transfers race each other
+  PASS  unordered locking: PostgreSQL has to abort one
+        ✓ 1 transfer aborted with 40P01 "deadlock detected"
+        ✓ 1 transfer completed after the victim was aborted
+  PASS  real transfer: ordered locking never deadlocks
+        ✓ 20 opposite transfers, 0 failures
+  PASS  ledger is healthy afterwards
+        ✓ reconciliation_summary() = true
+Idempotency race: the same key sent from several connections at once
+  PASS  same key while the first request is still running
+        ✓ first request is inside its open transaction
+        ✓ second request fails fast: request with this idempotency key is already in progress
+        ✓ retry after commit returns the same transaction id (127195)
+        ✓ exactly 1 transaction exists for the key
+  PASS  8 simultaneous requests with one key
+        ✓ 3 succeeded, all with transaction id 127196
+        ✓ 5 refused as "already in progress", no other errors
+        ✓ exactly 1 transaction exists for the key
+  PASS  the money moved once per key
+        ✓ wallet balance is ₹110.00 (₹10 start + two keys x ₹50)
+  PASS  ledger is healthy afterwards
+        ✓ reconciliation_summary() = true
+=== Run 2 of 5 ===
+Double-spend: two ₹800 withdrawals race against a ₹1,000 wallet
+  PASS  unsafe withdraw: both succeed (the bug)
+        ✓ 2 of 2 withdrawals succeeded
+        ✓ wallet balance is ₹-600.00 (should never be negative)
+  PASS  real withdraw: exactly one succeeds
+        ✓ 1 of 2 withdrawals succeeded
+        ✓ the other was refused: account 1113 has insufficient funds: balance 20000, change -80000
+        ✓ wallet balance is ₹200.00
+  PASS  ledger is healthy afterwards
+        ✓ reconciliation_summary() = true
+Deadlock: A->B and B->A transfers race each other
+  PASS  unordered locking: PostgreSQL has to abort one
+        ✓ 1 transfer aborted with 40P01 "deadlock detected"
+        ✓ 1 transfer completed after the victim was aborted
+  PASS  real transfer: ordered locking never deadlocks
+        ✓ 20 opposite transfers, 0 failures
+  PASS  ledger is healthy afterwards
+        ✓ reconciliation_summary() = true
+Idempotency race: the same key sent from several connections at once
+  PASS  same key while the first request is still running
+        ✓ first request is inside its open transaction
+        ✓ second request fails fast: request with this idempotency key is already in progress
+        ✓ retry after commit returns the same transaction id (127227)
+        ✓ exactly 1 transaction exists for the key
+  PASS  8 simultaneous requests with one key
+        ✓ 3 succeeded, all with transaction id 127228
+        ✓ 5 refused as "already in progress", no other errors
+        ✓ exactly 1 transaction exists for the key
+  PASS  the money moved once per key
+        ✓ wallet balance is ₹110.00 (₹10 start + two keys x ₹50)
+  PASS  ledger is healthy afterwards
+        ✓ reconciliation_summary() = true
+=== Run 3 of 5 ===
+Double-spend: two ₹800 withdrawals race against a ₹1,000 wallet
+  PASS  unsafe withdraw: both succeed (the bug)
+        ✓ 2 of 2 withdrawals succeeded
+        ✓ wallet balance is ₹-600.00 (should never be negative)
+  PASS  real withdraw: exactly one succeeds
+        ✓ 1 of 2 withdrawals succeeded
+        ✓ the other was refused: account 1118 has insufficient funds: balance 20000, change -80000
+        ✓ wallet balance is ₹200.00
+  PASS  ledger is healthy afterwards
+        ✓ reconciliation_summary() = true
+Deadlock: A->B and B->A transfers race each other
+  PASS  unordered locking: PostgreSQL has to abort one
+        ✓ 1 transfer aborted with 40P01 "deadlock detected"
+        ✓ 1 transfer completed after the victim was aborted
+  PASS  real transfer: ordered locking never deadlocks
+        ✓ 20 opposite transfers, 0 failures
+  PASS  ledger is healthy afterwards
+        ✓ reconciliation_summary() = true
+Idempotency race: the same key sent from several connections at once
+  PASS  same key while the first request is still running
+        ✓ first request is inside its open transaction
+        ✓ second request fails fast: request with this idempotency key is already in progress
+        ✓ retry after commit returns the same transaction id (127259)
+        ✓ exactly 1 transaction exists for the key
+  PASS  8 simultaneous requests with one key
+        ✓ 2 succeeded, all with transaction id 127260
+        ✓ 6 refused as "already in progress", no other errors
+        ✓ exactly 1 transaction exists for the key
+  PASS  the money moved once per key
+        ✓ wallet balance is ₹110.00 (₹10 start + two keys x ₹50)
+  PASS  ledger is healthy afterwards
+        ✓ reconciliation_summary() = true
+=== Run 4 of 5 ===
+Double-spend: two ₹800 withdrawals race against a ₹1,000 wallet
+  PASS  unsafe withdraw: both succeed (the bug)
+        ✓ 2 of 2 withdrawals succeeded
+        ✓ wallet balance is ₹-600.00 (should never be negative)
+  PASS  real withdraw: exactly one succeeds
+        ✓ 1 of 2 withdrawals succeeded
+        ✓ the other was refused: account 1123 has insufficient funds: balance 20000, change -80000
+        ✓ wallet balance is ₹200.00
+  PASS  ledger is healthy afterwards
+        ✓ reconciliation_summary() = true
+Deadlock: A->B and B->A transfers race each other
+  PASS  unordered locking: PostgreSQL has to abort one
+        ✓ 1 transfer aborted with 40P01 "deadlock detected"
+        ✓ 1 transfer completed after the victim was aborted
+  PASS  real transfer: ordered locking never deadlocks
+        ✓ 20 opposite transfers, 0 failures
+  PASS  ledger is healthy afterwards
+        ✓ reconciliation_summary() = true
+Idempotency race: the same key sent from several connections at once
+  PASS  same key while the first request is still running
+        ✓ first request is inside its open transaction
+        ✓ second request fails fast: request with this idempotency key is already in progress
+        ✓ retry after commit returns the same transaction id (127291)
+        ✓ exactly 1 transaction exists for the key
+  PASS  8 simultaneous requests with one key
+        ✓ 1 succeeded, all with transaction id 127292
+        ✓ 7 refused as "already in progress", no other errors
+        ✓ exactly 1 transaction exists for the key
+  PASS  the money moved once per key
+        ✓ wallet balance is ₹110.00 (₹10 start + two keys x ₹50)
+  PASS  ledger is healthy afterwards
+        ✓ reconciliation_summary() = true
+=== Run 5 of 5 ===
+Double-spend: two ₹800 withdrawals race against a ₹1,000 wallet
+  PASS  unsafe withdraw: both succeed (the bug)
+        ✓ 2 of 2 withdrawals succeeded
+        ✓ wallet balance is ₹-600.00 (should never be negative)
+  PASS  real withdraw: exactly one succeeds
+        ✓ 1 of 2 withdrawals succeeded
+        ✓ the other was refused: account 1128 has insufficient funds: balance 20000, change -80000
+        ✓ wallet balance is ₹200.00
+  PASS  ledger is healthy afterwards
+        ✓ reconciliation_summary() = true
+Deadlock: A->B and B->A transfers race each other
+  PASS  unordered locking: PostgreSQL has to abort one
+        ✓ 1 transfer aborted with 40P01 "deadlock detected"
+        ✓ 1 transfer completed after the victim was aborted
+  PASS  real transfer: ordered locking never deadlocks
+        ✓ 20 opposite transfers, 0 failures
+  PASS  ledger is healthy afterwards
+        ✓ reconciliation_summary() = true
+Idempotency race: the same key sent from several connections at once
+  PASS  same key while the first request is still running
+        ✓ first request is inside its open transaction
+        ✓ second request fails fast: request with this idempotency key is already in progress
+        ✓ retry after commit returns the same transaction id (127323)
+        ✓ exactly 1 transaction exists for the key
+  PASS  8 simultaneous requests with one key
+        ✓ 1 succeeded, all with transaction id 127324
+        ✓ 7 refused as "already in progress", no other errors
+        ✓ exactly 1 transaction exists for the key
+  PASS  the money moved once per key
+        ✓ wallet balance is ₹110.00 (₹10 start + two keys x ₹50)
+  PASS  ledger is healthy afterwards
+        ✓ reconciliation_summary() = true
+=== Summary ===
+  double-spend: 5 of 5 runs passed
+  deadlock: 5 of 5 runs passed
+  idempotency: 5 of 5 runs passed

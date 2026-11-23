@@ -220,17 +220,28 @@ This is the most important function in the project. Every operation in Phase 5 c
 **Codex can:** write the Python threading or psycopg harness. You decide which SQL each thread runs.
 
 **Done when**
-- [ ] Each demo produces the same result 5 times in a row
-- [ ] The output is written up in `docs/concurrency.md`
+- [x] Each demo produces the same result 5 times in a row
+- [x] The output is written up in `docs/concurrency.md`
 
 ---
 
-## Phase 12: API and frontend (Codex-led)
+## Phase 12: API and frontend
 
-Give Codex your final function signatures from `db/` and these rules:
+Express server in `server/` and React client in `client/`. Rules followed:
 - Each endpoint calls exactly one database function and contains no business logic.
 - Each request gets a connection from a pool, runs in one transaction, and returns the connection.
 - The frontend generates one idempotency key per user action.
+
+Scope: the existing database functions only. The UPI layer (VPA, PIN, collect requests) is **skipped** by decision.
+
+Built: wallet list/create, wallet detail with history, pay flow with fee review, admin ledger check, and a **Demo Console** with scripted acts (money in/out, fee, refunds, overdraft/frozen, idempotency, try-to-break-it, tamper, concurrency, performance) that show the function called, input and output for every step.
+
+**Done when**
+- [x] Every endpoint calls one database function; the app logins (`ledger_app`, `ledger_admin`) have no table access
+- [x] The idempotency key is generated per action and sent as a header
+- [x] The demo console covers the demo acts and was checked in a browser
+- [x] New read functions (`list_wallets`, `get_transaction`, `account_overview`) have a test (`tests/11_read_functions.sql`)
+- [x] `npm run test:db`: 10 files pass
 
 **Your job:** read every line it produces until you can explain it in the viva.
 

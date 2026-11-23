@@ -122,3 +122,26 @@
 - **Evidence:** raw plans saved in `docs/explain/`, summarised in `docs/performance.md` with the query, timings and one sentence of interpretation each.
 - **Reported numbers:** three runs per query; report the steady runs 2–3 (run 1 is cold). Even with the index, `OFFSET 100000` stays slow, so keyset is the supported paging method (measured: 225 ms vs 0.09 ms).
 - **Not a test file:** the history walk (`db:check-history`) is a one-off script because it needs the large dataset; recorded as a limitation in `docs/invariants.md`.
+
+## Phase 11: Concurrency demos
+
+- **Demo placement:** the broken functions are installed by `npm run demo:setup` from `demos/sql/`, not by `db:reset`/`db:apply`. They are owner-only; `tests/10_demo_closed.sql` checks that no app role can use them.
+- **Reproducible races:** the unsafe functions pause one second between their check and their write, so the race happens every time.
+- **Demos:** double-spend, deadlock and idempotency race. The `FOR UPDATE` vs `SERIALIZABLE` bonus is skipped.
+- **Cleanup:** the unsafe double-spend leaves a negative wallet; it is repaired with a normal top-up (append-only history), then reconciliation is checked.
+- **Evidence:** five consecutive runs saved in `docs/concurrency-output.txt`; write-up in `docs/concurrency.md`.
+
+
+## Phase 12: API and demo console
+
+- **Stack:** Express in `server/`, React (Vite) in `client/`. API first, then UI.
+- **Scope:** existing functions only; no UPI layer (VPA, PIN, collect requests).
+- **Demo Console:** a separate guided tab (acts from `PROJECT-TOUR.md`) with an "Under the hood" panel; Wallets/Pay stay as the plain app.
+- **Attack and tamper demos:** run by the server on the owner login (`DATABASE_URL`, used only inside `server/demo/`), fixed statements only, always rolled back. Tamper/repair are the only persistent changes; leaving a scenario repairs the tamper.
+- **Scenarios:** scripted, one step per "Next step" click; each step states whether it should be accepted or refused and the screen shows what the database did (ledger legs, balances before/after, whole-ledger check, functions called and timing). Fresh wallets per run so numbers repeat.
+- **Acts built:** money in/out, transfer fee, refunds, overdraft/frozen, double-click idempotency, try-to-break-it, reconciliation tamper, concurrency (streamed from `demos/concurrency.mjs`), performance (saved numbers).
+- **New DB reads:** `db/10_demo_reads.sql` adds `get_transaction` (ledger legs) and `account_overview` (balances plus BANK and FEE_INCOME), read-only, granted to the app roles.
+- **Whole-ledger check:** about 1.2 s on the big ledger, so the console shows each step result first and fills the check in afterwards.
+- **Console wording:** every step shows Function called, Input and Output (not "under the hood"). Concurrency demos print the INPUT and OUTPUT of each session with timestamps (`DEMO_VERBOSE=1`, set by the console).
+- **Disclaimer:** fixed footer at the bottom of every screen.
+- **Wallet lists:** `list_wallets` returns the newest wallet first; the Pay screen uses a search-as-you-type wallet picker instead of a long scrolling list.

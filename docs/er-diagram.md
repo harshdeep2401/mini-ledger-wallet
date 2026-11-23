@@ -8,6 +8,7 @@ erDiagram
     ACCOUNTS ||--o{ LEDGER_ENTRIES : "is posted to by"
     TRANSACTIONS ||--|{ LEDGER_ENTRIES : "consists of (2 or more)"
     TRANSACTIONS |o--o{ TRANSACTIONS : "reversed by (refunds)"
+    TRANSACTIONS ||--o{ IDEMPOTENCY_KEYS : "recorded under"
 
     USERS {
         bigint id PK
@@ -35,6 +36,12 @@ erDiagram
         jsonb metadata
         timestamptz created_at
     }
+    IDEMPOTENCY_KEYS {
+        text idempotency_key PK "1 to 200 characters"
+        bytea request_fingerprint "SHA-256 of operation and arguments"
+        bigint transaction_id FK
+        timestamptz created_at
+    }
     LEDGER_ENTRIES {
         bigint id PK
         bigint transaction_id FK
@@ -53,6 +60,14 @@ erDiagram
 | Transaction consists of ledger entries | 1 : N (N ≥ 2) | **Both total**: an entry belongs to exactly one transaction, and a transaction has at least two entries. | The "at least 2, balanced" rule is enforced by the deferred trigger in Phase 3, not by the schema. |
 | Account is posted to by ledger entries | 1 : N | **Entry: total** (every entry has an account). **Account: partial** (a new account has no entries yet). | |
 | Transaction reverses transaction | 1 : N | **Both partial** | One transfer can have several partial refunds. Only refunds set the reference. |
+| Transaction is recorded under idempotency keys | 1 : N in the schema, 1 : 1 in practice | **Key: total** (every key points at one transaction). **Transaction: partial** (only money movements have keys). | A retry with the same key returns the saved transaction. `transactions.idempotency_key` is a copy; reconciliation checks that it matches the key table. |
+
+## Enumerations and indexes
+
+- `account_type`: asset, liability, income, expense. `account_status`: active, frozen, closed. `transaction_type`: topup, transfer, withdrawal, refund. `ledger_direction`: debit, credit.
+- Seeded system accounts: `BANK` (asset) and `FEE_INCOME` (income). User wallets are liabilities.
+- `idx_ledger_entries_trxn` on `ledger_entries(transaction_id)` for the balance check and transaction lookups.
+- `idx_ledger_entries_account_history` on `ledger_entries(account_id, created_at DESC, id DESC)` for keyset history paging.
 
 ## Viva point: ledger entry is an associative entity
 
@@ -64,3 +79,4 @@ Transactions and accounts have an **M : N** relationship. One transaction touche
 - Total participation moved from the account side to the **user side** of "owns".
 - Added the **self-relationship** on transactions for refunds.
 - Added attributes and keys.
+- Added the **`idempotency_keys`** table (Phase 6).
