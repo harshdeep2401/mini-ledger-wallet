@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { api } from './api.js';
+import { adminApi as api } from '../api.js';
 
-export default function Admin() {
+export default function LedgerCheck() {
   const [result, setResult] = useState(null);
   const [issues, setIssues] = useState([]);
   const [busy, setBusy] = useState(false);

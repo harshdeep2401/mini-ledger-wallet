@@ -1,71 +1,71 @@
 --- run 1 of 3 ---
-Limit  (cost=0.71..28.10 rows=20 width=72) (actual time=0.023..0.057 rows=20.00 loops=1)
+Limit  (cost=0.71..28.61 rows=20 width=64) (actual time=0.020..0.054 rows=20.00 loops=1)
   Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
   Buffers: shared hit=65
-  ->  Nested Loop  (cost=0.71..27237.51 rows=19890 width=72) (actual time=0.022..0.054 rows=20.00 loops=1)
+  ->  Nested Loop  (cost=0.71..27264.87 rows=19549 width=64) (actual time=0.019..0.051 rows=20.00 loops=1)
         Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
         Inner Unique: true
         Buffers: shared hit=65
-        ->  Index Scan using idx_ledger_entries_account_history on ledger.ledger_entries e  (cost=0.42..14927.61 rows=19890 width=36) (actual time=0.014..0.020 rows=20.00 loops=1)
+        ->  Index Scan using idx_ledger_entries_account_history on ledger.ledger_entries e  (cost=0.42..15004.68 rows=19549 width=36) (actual time=0.011..0.017 rows=20.00 loops=1)
               Output: e.id, e.transaction_id, e.account_id, e.direction, e.amount, e.created_at
-              Index Cond: ((e.account_id = '2'::bigint) AND (ROW(e.created_at, e.id) < ROW('2026-11-22 10:45:58.263+00'::timestamp with time zone, '62384'::bigint)))
+              Index Cond: ((e.account_id = '2'::bigint) AND (ROW(e.created_at, e.id) < ROW('2026-11-22 10:45:59.313+00'::timestamp with time zone, '63215'::bigint)))
               Index Searches: 1
               Buffers: shared hit=5
-        ->  Index Scan using transactions_pkey on ledger.transactions t  (cost=0.29..0.62 rows=1 width=44) (actual time=0.001..0.001 rows=1.00 loops=20)
+        ->  Index Scan using transactions_pkey on ledger.transactions t  (cost=0.29..0.63 rows=1 width=36) (actual time=0.001..0.001 rows=1.00 loops=20)
               Output: t.id, t.type, t.reverses_transaction_id, t.idempotency_key, t.metadata, t.created_at
               Index Cond: (t.id = e.transaction_id)
               Index Searches: 20
               Buffers: shared hit=60
 Query Identifier: -1017888479211362316
 Planning:
-  Buffers: shared hit=19
-Planning Time: 0.319 ms
-Execution Time: 0.091 ms
+  Buffers: shared hit=20
+Planning Time: 0.447 ms
+Execution Time: 0.087 ms
 
 --- run 2 of 3 ---
-Limit  (cost=0.71..28.10 rows=20 width=72) (actual time=0.022..0.056 rows=20.00 loops=1)
+Limit  (cost=0.71..28.61 rows=20 width=64) (actual time=0.018..0.053 rows=20.00 loops=1)
   Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
   Buffers: shared hit=65
-  ->  Nested Loop  (cost=0.71..27237.51 rows=19890 width=72) (actual time=0.021..0.054 rows=20.00 loops=1)
+  ->  Nested Loop  (cost=0.71..27264.87 rows=19549 width=64) (actual time=0.017..0.050 rows=20.00 loops=1)
         Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
         Inner Unique: true
         Buffers: shared hit=65
-        ->  Index Scan using idx_ledger_entries_account_history on ledger.ledger_entries e  (cost=0.42..14927.61 rows=19890 width=36) (actual time=0.013..0.019 rows=20.00 loops=1)
+        ->  Index Scan using idx_ledger_entries_account_history on ledger.ledger_entries e  (cost=0.42..15004.68 rows=19549 width=36) (actual time=0.010..0.015 rows=20.00 loops=1)
               Output: e.id, e.transaction_id, e.account_id, e.direction, e.amount, e.created_at
-              Index Cond: ((e.account_id = '2'::bigint) AND (ROW(e.created_at, e.id) < ROW('2026-11-22 10:45:58.263+00'::timestamp with time zone, '62384'::bigint)))
+              Index Cond: ((e.account_id = '2'::bigint) AND (ROW(e.created_at, e.id) < ROW('2026-11-22 10:45:59.313+00'::timestamp with time zone, '63215'::bigint)))
               Index Searches: 1
               Buffers: shared hit=5
-        ->  Index Scan using transactions_pkey on ledger.transactions t  (cost=0.29..0.62 rows=1 width=44) (actual time=0.001..0.001 rows=1.00 loops=20)
+        ->  Index Scan using transactions_pkey on ledger.transactions t  (cost=0.29..0.63 rows=1 width=36) (actual time=0.001..0.001 rows=1.00 loops=20)
               Output: t.id, t.type, t.reverses_transaction_id, t.idempotency_key, t.metadata, t.created_at
               Index Cond: (t.id = e.transaction_id)
               Index Searches: 20
               Buffers: shared hit=60
 Query Identifier: -1017888479211362316
 Planning:
-  Buffers: shared hit=19
-Planning Time: 0.310 ms
-Execution Time: 0.090 ms
+  Buffers: shared hit=20
+Planning Time: 0.561 ms
+Execution Time: 0.106 ms
 
 --- run 3 of 3 ---
-Limit  (cost=0.71..28.10 rows=20 width=72) (actual time=0.021..0.056 rows=20.00 loops=1)
+Limit  (cost=0.71..28.61 rows=20 width=64) (actual time=0.020..0.055 rows=20.00 loops=1)
   Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
   Buffers: shared hit=65
-  ->  Nested Loop  (cost=0.71..27237.51 rows=19890 width=72) (actual time=0.021..0.053 rows=20.00 loops=1)
+  ->  Nested Loop  (cost=0.71..27264.87 rows=19549 width=64) (actual time=0.019..0.052 rows=20.00 loops=1)
         Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
         Inner Unique: true
         Buffers: shared hit=65
-        ->  Index Scan using idx_ledger_entries_account_history on ledger.ledger_entries e  (cost=0.42..14927.61 rows=19890 width=36) (actual time=0.012..0.019 rows=20.00 loops=1)
+        ->  Index Scan using idx_ledger_entries_account_history on ledger.ledger_entries e  (cost=0.42..15004.68 rows=19549 width=36) (actual time=0.012..0.017 rows=20.00 loops=1)
               Output: e.id, e.transaction_id, e.account_id, e.direction, e.amount, e.created_at
-              Index Cond: ((e.account_id = '2'::bigint) AND (ROW(e.created_at, e.id) < ROW('2026-11-22 10:45:58.263+00'::timestamp with time zone, '62384'::bigint)))
+              Index Cond: ((e.account_id = '2'::bigint) AND (ROW(e.created_at, e.id) < ROW('2026-11-22 10:45:59.313+00'::timestamp with time zone, '63215'::bigint)))
               Index Searches: 1
               Buffers: shared hit=5
-        ->  Index Scan using transactions_pkey on ledger.transactions t  (cost=0.29..0.62 rows=1 width=44) (actual time=0.001..0.001 rows=1.00 loops=20)
+        ->  Index Scan using transactions_pkey on ledger.transactions t  (cost=0.29..0.63 rows=1 width=36) (actual time=0.001..0.001 rows=1.00 loops=20)
               Output: t.id, t.type, t.reverses_transaction_id, t.idempotency_key, t.metadata, t.created_at
               Index Cond: (t.id = e.transaction_id)
               Index Searches: 20
               Buffers: shared hit=60
 Query Identifier: -1017888479211362316
 Planning:
-  Buffers: shared hit=19
-Planning Time: 0.321 ms
-Execution Time: 0.090 ms
+  Buffers: shared hit=20
+Planning Time: 0.421 ms
+Execution Time: 0.089 ms

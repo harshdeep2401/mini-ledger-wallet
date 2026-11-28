@@ -7,6 +7,7 @@
     "db:reset": "node --env-file=.env scripts/db.mjs reset",
     "test:db": "node --env-file=.env scripts/test.mjs",
     "db:seed:demo": "node --env-file=.env scripts/seed-demo.mjs",
+    "db:seed:logins": "node --env-file=.env scripts/seed-logins.mjs",
     "db:seed:performance": "node --env-file=.env scripts/seed-performance.mjs",
     "db:explain": "node --env-file=.env scripts/capture-explain.mjs",
     "db:check-history": "node --env-file=.env scripts/check-history-walk.mjs",

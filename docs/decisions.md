@@ -145,3 +145,17 @@
 - **Console wording:** every step shows Function called, Input and Output (not "under the hood"). Concurrency demos print the INPUT and OUTPUT of each session with timestamps (`DEMO_VERBOSE=1`, set by the console).
 - **Disclaimer:** fixed footer at the bottom of every screen.
 - **Wallet lists:** `list_wallets` returns the newest wallet first; the Pay screen uses a search-as-you-type wallet picker instead of a long scrolling list.
+
+## Extended features: live admin and login
+
+- **Goal:** make it look like a live system; see `EXTENDED-FEATURES.md`.
+- **Admin tab:** traffic simulator, live feed, dashboard with live reconciliation, transaction tracer, wallet directory. Replaces the old Wallets, Pay and Ledger check tabs.
+- **Live feed:** `NOTIFY` from a trigger, one `LISTEN` connection in the server, Server-Sent Events to the browser. The feed fetches the exact ids announced, because commits can arrive out of order. The listener uses Neon's direct address (PgBouncer cannot hold a `LISTEN`).
+- **Simulator:** runs in the server as `ledger_app`; calls only existing functions; about a quarter of requests are meant to fail. Rejections are counted by the simulator, since a rolled-back payment leaves nothing in the database.
+- **Login (option a, real simulated login):** bcrypt passwords and SHA-256 session tokens in the database; 8-hour sessions; lock for 5 minutes after 5 wrong passwords.
+- **New role `ledger_web`** for browser routes, limited to token functions; `ledger_app` kept for internal tools.
+- **Refunds from the UI:** only by the receiver of the transfer.
+- **UI split (revised):** a log-in/sign-up landing page for users and admins; a user dashboard (add, withdraw, transfer, recent activity); an admin area with Dashboard and Demo console views.
+- **Admin log-in:** separate `admins` table and sessions; sign-up by single-use invite code (owner creates codes); every admin action is a token-checked `admin_*` function on `ledger_web`.
+- **Demo console:** admin only.
+- **Browser demo users:** Riya and Kabir; Alice and Bob stay untouched for `tests/09_seed.sql`.

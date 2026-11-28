@@ -1,176 +1,176 @@
 --- run 1 of 3 ---
-Limit  (cost=27139.15..27141.48 rows=20 width=72) (actual time=214.268..224.877 rows=20.00 loops=1)
+Limit  (cost=27009.84..27012.17 rows=20 width=64) (actual time=221.563..230.758 rows=20.00 loops=1)
   Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
-  Buffers: shared hit=4712
-  ->  Gather Merge  (cost=15492.50..29676.60 rows=121787 width=72) (actual time=185.153..220.664 rows=100020.00 loops=1)
+  Buffers: shared hit=4748
+  ->  Gather Merge  (cost=15363.20..29534.60 rows=121678 width=64) (actual time=187.260..226.643 rows=100020.00 loops=1)
         Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
         Workers Planned: 2
         Workers Launched: 2
-        Buffers: shared hit=4712
-        ->  Sort  (cost=14492.48..14619.34 rows=50745 width=72) (actual time=172.127..173.751 rows=33945.67 loops=3)
+        Buffers: shared hit=4748
+        ->  Sort  (cost=14363.17..14489.92 rows=50699 width=64) (actual time=174.759..176.461 rows=33937.00 loops=3)
               Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
               Sort Key: e.created_at DESC, e.id DESC
-              Sort Method: quicksort  Memory: 3814kB
-              Buffers: shared hit=4712
-              Worker 0:  actual time=175.987..177.508 rows=31998.00 loops=1
-                Sort Method: quicksort  Memory: 3753kB
-                Buffers: shared hit=1710
-              Worker 1:  actual time=161.668..163.475 rows=37881.00 loops=1
-                Sort Method: quicksort  Memory: 3944kB
-                Buffers: shared hit=1446
-              ->  Parallel Hash Join  (cost=2866.88..8444.01 rows=50745 width=72) (actual time=46.821..111.436 rows=40000.00 loops=3)
+              Sort Method: quicksort  Memory: 3899kB
+              Buffers: shared hit=4748
+              Worker 0:  actual time=168.542..170.409 rows=36342.00 loops=1
+                Sort Method: quicksort  Memory: 3839kB
+                Buffers: shared hit=1558
+              Worker 1:  actual time=174.614..176.338 rows=34552.00 loops=1
+                Sort Method: quicksort  Memory: 3793kB
+                Buffers: shared hit=1516
+              ->  Parallel Hash Join  (cost=2886.77..8493.63 rows=50699 width=64) (actual time=47.245..115.371 rows=40092.33 loops=3)
                     Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
                     Inner Unique: true
                     Hash Cond: (e.transaction_id = t.id)
-                    Buffers: shared hit=4682
-                    Worker 0:  actual time=48.522..109.474 rows=38812.00 loops=1
-                      Buffers: shared hit=1695
-                    Worker 1:  actual time=38.489..104.477 rows=41516.00 loops=1
-                      Buffers: shared hit=1431
-                    ->  Parallel Seq Scan on ledger.ledger_entries e  (cost=0.00..5443.92 rows=50745 width=36) (actual time=0.047..18.428 rows=40000.00 loops=3)
+                    Buffers: shared hit=4718
+                    Worker 0:  actual time=43.751..107.263 rows=40023.00 loops=1
+                      Buffers: shared hit=1543
+                    Worker 1:  actual time=46.378..110.766 rows=39376.00 loops=1
+                      Buffers: shared hit=1501
+                    ->  Parallel Seq Scan on ledger.ledger_entries e  (cost=0.00..5473.78 rows=50699 width=36) (actual time=0.046..27.232 rows=40092.33 loops=3)
                           Output: e.id, e.transaction_id, e.account_id, e.direction, e.amount, e.created_at
                           Filter: (e.account_id = '2'::bigint)
-                          Rows Removed by Filter: 84667
-                          Buffers: shared hit=3496
-                          Worker 0:  actual time=0.020..21.466 rows=38812.00 loops=1
-                            Buffers: shared hit=1201
-                          Worker 1:  actual time=0.018..25.398 rows=41516.00 loops=1
-                            Buffers: shared hit=1164
-                    ->  Parallel Hash  (cost=1933.06..1933.06 rows=74706 width=44) (actual time=43.353..43.354 rows=42333.33 loops=3)
+                          Rows Removed by Filter: 85013
+                          Buffers: shared hit=3519
+                          Worker 0:  actual time=0.015..16.938 rows=40023.00 loops=1
+                            Buffers: shared hit=1153
+                          Worker 1:  actual time=0.018..28.164 rows=39376.00 loops=1
+                            Buffers: shared hit=1104
+                    ->  Parallel Hash  (cost=1949.12..1949.12 rows=75012 width=36) (actual time=41.703..41.704 rows=42506.67 loops=3)
                           Output: t.type, t.metadata, t.id
-                          Buckets: 131072  Batches: 1  Memory Usage: 7008kB
-                          Buffers: shared hit=1186
-                          Worker 0:  actual time=46.030..46.031 rows=52858.00 loops=1
-                            Buffers: shared hit=494
-                          Worker 1:  actual time=31.977..31.978 rows=28561.00 loops=1
-                            Buffers: shared hit=267
-                          ->  Parallel Seq Scan on ledger.transactions t  (cost=0.00..1933.06 rows=74706 width=44) (actual time=0.010..12.007 rows=42333.33 loops=3)
+                          Buckets: 131072  Batches: 1  Memory Usage: 7040kB
+                          Buffers: shared hit=1199
+                          Worker 0:  actual time=35.248..35.249 rows=40851.00 loops=1
+                            Buffers: shared hit=390
+                          Worker 1:  actual time=41.882..41.883 rows=42479.00 loops=1
+                            Buffers: shared hit=397
+                          ->  Parallel Seq Scan on ledger.transactions t  (cost=0.00..1949.12 rows=75012 width=36) (actual time=0.012..8.925 rows=42506.67 loops=3)
                                 Output: t.type, t.metadata, t.id
-                                Buffers: shared hit=1186
-                                Worker 0:  actual time=0.007..19.633 rows=52858.00 loops=1
-                                  Buffers: shared hit=494
-                                Worker 1:  actual time=0.011..3.142 rows=28561.00 loops=1
-                                  Buffers: shared hit=267
+                                Buffers: shared hit=1199
+                                Worker 0:  actual time=0.012..17.358 rows=40851.00 loops=1
+                                  Buffers: shared hit=390
+                                Worker 1:  actual time=0.011..4.849 rows=42479.00 loops=1
+                                  Buffers: shared hit=397
 Query Identifier: -8925450155162386217
 Planning:
-  Buffers: shared hit=62
-Planning Time: 0.365 ms
-Execution Time: 225.107 ms
+  Buffers: shared hit=63
+Planning Time: 0.398 ms
+Execution Time: 231.044 ms
 
 --- run 2 of 3 ---
-Limit  (cost=27139.15..27141.48 rows=20 width=72) (actual time=218.288..227.494 rows=20.00 loops=1)
+Limit  (cost=27009.84..27012.17 rows=20 width=64) (actual time=214.889..225.435 rows=20.00 loops=1)
   Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
-  Buffers: shared hit=4712
-  ->  Gather Merge  (cost=15492.50..29676.60 rows=121787 width=72) (actual time=189.553..223.319 rows=100020.00 loops=1)
+  Buffers: shared hit=4748
+  ->  Gather Merge  (cost=15363.20..29534.60 rows=121678 width=64) (actual time=182.355..221.317 rows=100020.00 loops=1)
         Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
         Workers Planned: 2
         Workers Launched: 2
-        Buffers: shared hit=4712
-        ->  Sort  (cost=14492.48..14619.34 rows=50745 width=72) (actual time=175.868..177.537 rows=33988.00 loops=3)
+        Buffers: shared hit=4748
+        ->  Sort  (cost=14363.17..14489.92 rows=50699 width=64) (actual time=167.710..169.432 rows=33910.00 loops=3)
               Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
               Sort Key: e.created_at DESC, e.id DESC
-              Sort Method: quicksort  Memory: 3959kB
-              Buffers: shared hit=4712
-              Worker 0:  actual time=175.362..177.148 rows=34300.00 loops=1
-                Sort Method: quicksort  Memory: 3846kB
-                Buffers: shared hit=1636
-              Worker 1:  actual time=167.576..169.235 rows=34813.00 loops=1
-                Sort Method: quicksort  Memory: 3705kB
-                Buffers: shared hit=1402
-              ->  Parallel Hash Join  (cost=2866.88..8444.01 rows=50745 width=72) (actual time=43.385..123.806 rows=40000.00 loops=3)
+              Sort Method: quicksort  Memory: 3908kB
+              Buffers: shared hit=4748
+              Worker 0:  actual time=161.552..163.349 rows=35070.00 loops=1
+                Sort Method: quicksort  Memory: 3755kB
+                Buffers: shared hit=1471
+              Worker 1:  actual time=162.093..163.870 rows=33275.00 loops=1
+                Sort Method: quicksort  Memory: 3867kB
+                Buffers: shared hit=1503
+              ->  Parallel Hash Join  (cost=2886.77..8493.63 rows=50699 width=64) (actual time=42.005..97.719 rows=40092.33 loops=3)
                     Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
                     Inner Unique: true
                     Hash Cond: (e.transaction_id = t.id)
-                    Buffers: shared hit=4682
-                    Worker 0:  actual time=43.823..116.998 rows=40132.00 loops=1
-                      Buffers: shared hit=1621
-                    Worker 1:  actual time=37.685..123.815 rows=38127.00 loops=1
-                      Buffers: shared hit=1387
-                    ->  Parallel Seq Scan on ledger.ledger_entries e  (cost=0.00..5443.92 rows=50745 width=36) (actual time=0.049..23.199 rows=40000.00 loops=3)
+                    Buffers: shared hit=4718
+                    Worker 0:  actual time=41.973..99.280 rows=38839.00 loops=1
+                      Buffers: shared hit=1456
+                    Worker 1:  actual time=34.084..88.782 rows=40421.00 loops=1
+                      Buffers: shared hit=1488
+                    ->  Parallel Seq Scan on ledger.ledger_entries e  (cost=0.00..5473.78 rows=50699 width=36) (actual time=0.052..24.695 rows=40092.33 loops=3)
                           Output: e.id, e.transaction_id, e.account_id, e.direction, e.amount, e.created_at
                           Filter: (e.account_id = '2'::bigint)
-                          Rows Removed by Filter: 84667
-                          Buffers: shared hit=3496
-                          Worker 0:  actual time=0.025..21.386 rows=40132.00 loops=1
-                            Buffers: shared hit=1238
-                          Worker 1:  actual time=0.019..26.311 rows=38127.00 loops=1
-                            Buffers: shared hit=1069
-                    ->  Parallel Hash  (cost=1933.06..1933.06 rows=74706 width=44) (actual time=39.941..39.942 rows=42333.33 loops=3)
+                          Rows Removed by Filter: 85013
+                          Buffers: shared hit=3519
+                          Worker 0:  actual time=0.020..15.663 rows=38839.00 loops=1
+                            Buffers: shared hit=1089
+                          Worker 1:  actual time=0.126..33.239 rows=40421.00 loops=1
+                            Buffers: shared hit=1152
+                    ->  Parallel Hash  (cost=1949.12..1949.12 rows=75012 width=36) (actual time=38.931..38.932 rows=42506.67 loops=3)
                           Output: t.type, t.metadata, t.id
                           Buckets: 131072  Batches: 1  Memory Usage: 7040kB
-                          Buffers: shared hit=1186
-                          Worker 0:  actual time=40.421..40.422 rows=40981.00 loops=1
-                            Buffers: shared hit=383
-                          Worker 1:  actual time=32.123..32.124 rows=34026.00 loops=1
-                            Buffers: shared hit=318
-                          ->  Parallel Seq Scan on ledger.transactions t  (cost=0.00..1933.06 rows=74706 width=44) (actual time=0.011..12.510 rows=42333.33 loops=3)
+                          Buffers: shared hit=1199
+                          Worker 0:  actual time=36.967..36.969 rows=38390.00 loops=1
+                            Buffers: shared hit=367
+                          Worker 1:  actual time=33.927..33.928 rows=35952.00 loops=1
+                            Buffers: shared hit=336
+                          ->  Parallel Seq Scan on ledger.transactions t  (cost=0.00..1949.12 rows=75012 width=36) (actual time=0.011..12.666 rows=42506.67 loops=3)
                                 Output: t.type, t.metadata, t.id
-                                Buffers: shared hit=1186
-                                Worker 0:  actual time=0.008..4.470 rows=40981.00 loops=1
-                                  Buffers: shared hit=383
-                                Worker 1:  actual time=0.011..11.650 rows=34026.00 loops=1
-                                  Buffers: shared hit=318
+                                Buffers: shared hit=1199
+                                Worker 0:  actual time=0.010..12.373 rows=38390.00 loops=1
+                                  Buffers: shared hit=367
+                                Worker 1:  actual time=0.011..4.079 rows=35952.00 loops=1
+                                  Buffers: shared hit=336
 Query Identifier: -8925450155162386217
 Planning:
-  Buffers: shared hit=19
-Planning Time: 0.314 ms
-Execution Time: 227.788 ms
+  Buffers: shared hit=20
+Planning Time: 0.340 ms
+Execution Time: 225.902 ms
 
 --- run 3 of 3 ---
-Limit  (cost=27139.15..27141.48 rows=20 width=72) (actual time=209.613..218.758 rows=20.00 loops=1)
+Limit  (cost=27009.84..27012.17 rows=20 width=64) (actual time=211.408..220.508 rows=20.00 loops=1)
   Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
-  Buffers: shared hit=4712
-  ->  Gather Merge  (cost=15492.50..29676.60 rows=121787 width=72) (actual time=181.439..214.623 rows=100020.00 loops=1)
+  Buffers: shared hit=4748
+  ->  Gather Merge  (cost=15363.20..29534.60 rows=121678 width=64) (actual time=183.312..216.401 rows=100020.00 loops=1)
         Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
         Workers Planned: 2
         Workers Launched: 2
-        Buffers: shared hit=4712
-        ->  Sort  (cost=14492.48..14619.34 rows=50745 width=72) (actual time=170.484..172.107 rows=33911.67 loops=3)
+        Buffers: shared hit=4748
+        ->  Sort  (cost=14363.17..14489.92 rows=50699 width=64) (actual time=173.717..175.343 rows=33934.00 loops=3)
               Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
               Sort Key: e.created_at DESC, e.id DESC
-              Sort Method: quicksort  Memory: 3824kB
-              Buffers: shared hit=4712
-              Worker 0:  actual time=171.711..173.262 rows=32250.00 loops=1
-                Sort Method: quicksort  Memory: 3874kB
-                Buffers: shared hit=1532
-              Worker 1:  actual time=163.453..165.126 rows=34559.00 loops=1
-                Sort Method: quicksort  Memory: 3813kB
-                Buffers: shared hit=1485
-              ->  Parallel Hash Join  (cost=2866.88..8444.01 rows=50745 width=72) (actual time=47.780..115.345 rows=40000.00 loops=3)
+              Sort Method: quicksort  Memory: 3911kB
+              Buffers: shared hit=4748
+              Worker 0:  actual time=170.657..172.352 rows=34813.00 loops=1
+                Sort Method: quicksort  Memory: 3748kB
+                Buffers: shared hit=1498
+              Worker 1:  actual time=167.481..169.028 rows=31740.00 loops=1
+                Sort Method: quicksort  Memory: 3872kB
+                Buffers: shared hit=1519
+              ->  Parallel Hash Join  (cost=2886.77..8493.63 rows=50699 width=64) (actual time=46.173..110.481 rows=40092.33 loops=3)
                     Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
                     Inner Unique: true
                     Hash Cond: (e.transaction_id = t.id)
-                    Buffers: shared hit=4682
-                    Worker 0:  actual time=48.348..122.839 rows=40528.00 loops=1
-                      Buffers: shared hit=1517
-                    Worker 1:  actual time=39.028..90.579 rows=39660.00 loops=1
-                      Buffers: shared hit=1470
-                    ->  Parallel Seq Scan on ledger.ledger_entries e  (cost=0.00..5443.92 rows=50745 width=36) (actual time=0.056..28.513 rows=40000.00 loops=3)
+                    Buffers: shared hit=4718
+                    Worker 0:  actual time=48.935..119.651 rows=38735.00 loops=1
+                      Buffers: shared hit=1483
+                    Worker 1:  actual time=35.797..115.858 rows=40491.00 loops=1
+                      Buffers: shared hit=1504
+                    ->  Parallel Seq Scan on ledger.ledger_entries e  (cost=0.00..5473.78 rows=50699 width=36) (actual time=0.048..32.845 rows=40092.33 loops=3)
                           Output: e.id, e.transaction_id, e.account_id, e.direction, e.amount, e.created_at
                           Filter: (e.account_id = '2'::bigint)
-                          Rows Removed by Filter: 84667
-                          Buffers: shared hit=3496
-                          Worker 0:  actual time=0.136..37.518 rows=40528.00 loops=1
-                            Buffers: shared hit=1155
-                          Worker 1:  actual time=0.020..8.813 rows=39660.00 loops=1
-                            Buffers: shared hit=1112
-                    ->  Parallel Hash  (cost=1933.06..1933.06 rows=74706 width=44) (actual time=42.001..42.003 rows=42333.33 loops=3)
+                          Rows Removed by Filter: 85013
+                          Buffers: shared hit=3519
+                          Worker 0:  actual time=0.013..48.269 rows=38735.00 loops=1
+                            Buffers: shared hit=1086
+                          Worker 1:  actual time=0.122..37.090 rows=40491.00 loops=1
+                            Buffers: shared hit=1154
+                    ->  Parallel Hash  (cost=1949.12..1949.12 rows=75012 width=36) (actual time=41.788..41.789 rows=42506.67 loops=3)
                           Output: t.type, t.metadata, t.id
                           Buckets: 131072  Batches: 1  Memory Usage: 7040kB
-                          Buffers: shared hit=1186
-                          Worker 0:  actual time=43.409..43.410 rows=38734.00 loops=1
-                            Buffers: shared hit=362
-                          Worker 1:  actual time=34.832..34.833 rows=38298.00 loops=1
-                            Buffers: shared hit=358
-                          ->  Parallel Seq Scan on ledger.transactions t  (cost=0.00..1933.06 rows=74706 width=44) (actual time=0.013..7.164 rows=42333.33 loops=3)
+                          Buffers: shared hit=1199
+                          Worker 0:  actual time=40.966..40.967 rows=42479.00 loops=1
+                            Buffers: shared hit=397
+                          Worker 1:  actual time=35.644..35.645 rows=37450.00 loops=1
+                            Buffers: shared hit=350
+                          ->  Parallel Seq Scan on ledger.transactions t  (cost=0.00..1949.12 rows=75012 width=36) (actual time=0.011..14.007 rows=42506.67 loops=3)
                                 Output: t.type, t.metadata, t.id
-                                Buffers: shared hit=1186
-                                Worker 0:  actual time=0.016..4.126 rows=38734.00 loops=1
-                                  Buffers: shared hit=362
-                                Worker 1:  actual time=0.010..12.240 rows=38298.00 loops=1
-                                  Buffers: shared hit=358
+                                Buffers: shared hit=1199
+                                Worker 0:  actual time=0.012..16.892 rows=42479.00 loops=1
+                                  Buffers: shared hit=397
+                                Worker 1:  actual time=0.011..20.221 rows=37450.00 loops=1
+                                  Buffers: shared hit=350
 Query Identifier: -8925450155162386217
 Planning:
-  Buffers: shared hit=19
-Planning Time: 0.302 ms
-Execution Time: 219.034 ms
+  Buffers: shared hit=20
+Planning Time: 0.427 ms
+Execution Time: 220.940 ms

@@ -3,6 +3,8 @@
 import express from 'express';
 import { callFunction } from './db.js';
 import { demo } from './demo/routes.js';
+import { admin, requireAdmin } from './admin.js';
+import { tokenOf } from './token.js';
 
 export const app = express();
 app.use(express.json());
@@ -14,33 +16,41 @@ const route = (handler) => (req, res, next) => handler(req, res).catch(next);
 const keyOf = (req) => req.get('Idempotency-Key') ?? null;
 const intOrNull = (value) => (value === undefined || value === '' ? null : value);
 
-// ---- wallets ---------------------------------------------------------------------
+// ---- log in (ledger_web) -------------------------------------------------------------
+// The browser keeps the session token and sends it as "Authorization: Bearer <token>".
+// The server never decides who the user is: it hands the token to the database.
 
-app.get('/api/wallets', route(async (req, res) => {
-  const rows = await callFunction('app',
-    'SELECT * FROM ledger.list_wallets($1, $2)',
-    [req.query.search ?? null, req.query.limit ?? 50]);
-  res.json(rows);
-}));
-
-app.post('/api/wallets', route(async (req, res) => {
-  const { name, email } = req.body ?? {};
-  const [row] = await callFunction('app',
-    'SELECT ledger.create_user_with_wallet($1, $2) AS user_id', [name, email]);
+app.post('/api/auth/sign-up', route(async (req, res) => {
+  const { name, email, password } = req.body ?? {};
+  const [row] = await callFunction('web', 'SELECT * FROM ledger.sign_up($1, $2, $3)', [name, email, password]);
   res.status(201).json(row);
 }));
 
-app.get('/api/wallets/:accountId/balance', route(async (req, res) => {
-  const [row] = await callFunction('app',
-    'SELECT ledger.get_balance($1) AS balance', [req.params.accountId]);
+app.post('/api/auth/log-in', route(async (req, res) => {
+  const { email, password } = req.body ?? {};
+  const [row] = await callFunction('web', 'SELECT * FROM ledger.log_in($1, $2)', [email, password]);
+  // A failed log-in is a returned value (so the failure count commits), not an exception.
+  if (row.error) return res.status(401).json({ error: row.error, code: 'P1002' });
+  res.json({ token: row.token, expires_at: row.expires_at });
+}));
+
+app.post('/api/auth/log-out', route(async (req, res) => {
+  await callFunction('web', 'SELECT ledger.log_out($1)', [tokenOf(req)]);
+  res.status(204).end();
+}));
+
+// ---- the logged-in user's wallet (ledger_web) ---------------------------------------
+
+app.get('/api/me', route(async (req, res) => {
+  const [row] = await callFunction('web', 'SELECT * FROM ledger.my_wallet($1)', [tokenOf(req)]);
   res.json(row);
 }));
 
-app.get('/api/wallets/:accountId/history', route(async (req, res) => {
+app.get('/api/me/history', route(async (req, res) => {
   const { cursor_created_at, cursor_id, limit } = req.query;
-  const rows = await callFunction('app',
-    'SELECT * FROM ledger.get_history($1, $2, $3, $4)',
-    [req.params.accountId, intOrNull(cursor_created_at), intOrNull(cursor_id), limit ?? 20]);
+  const rows = await callFunction('web',
+    'SELECT * FROM ledger.my_history($1, $2, $3, $4)',
+    [tokenOf(req), intOrNull(cursor_created_at), intOrNull(cursor_id), limit ?? 20]);
   // The database says whether more rows exist (has_more on every row). Hand the client
   // the cursor for the next page: the position of the last row returned.
   const last = rows.at(-1);
@@ -50,67 +60,54 @@ app.get('/api/wallets/:accountId/history', route(async (req, res) => {
   });
 }));
 
-// ---- money movement (each needs an Idempotency-Key header) ----------------------------
+app.get('/api/me/recipients', route(async (req, res) => {
+  res.json(await callFunction('web',
+    'SELECT * FROM ledger.find_recipients($1, $2, $3)',
+    [tokenOf(req), req.query.search ?? null, req.query.limit ?? 10]));
+}));
 
-app.post('/api/top-ups', route(async (req, res) => {
-  const { wallet_account_id, amount } = req.body ?? {};
-  const [row] = await callFunction('app',
-    'SELECT ledger.top_up($1, $2, $3) AS transaction_id', [wallet_account_id, amount, keyOf(req)]);
+// Money movement: each needs an Idempotency-Key header. There is no "from" field:
+// the database takes the source wallet from the session token.
+
+app.post('/api/me/top-ups', route(async (req, res) => {
+  const [row] = await callFunction('web',
+    'SELECT ledger.my_top_up($1, $2, $3) AS transaction_id', [tokenOf(req), req.body?.amount, keyOf(req)]);
   res.status(201).json(row);
 }));
 
-app.post('/api/withdrawals', route(async (req, res) => {
-  const { wallet_account_id, amount } = req.body ?? {};
-  const [row] = await callFunction('app',
-    'SELECT ledger.withdraw($1, $2, $3) AS transaction_id', [wallet_account_id, amount, keyOf(req)]);
+app.post('/api/me/withdrawals', route(async (req, res) => {
+  const [row] = await callFunction('web',
+    'SELECT ledger.my_withdraw($1, $2, $3) AS transaction_id', [tokenOf(req), req.body?.amount, keyOf(req)]);
   res.status(201).json(row);
 }));
 
-app.post('/api/transfers', route(async (req, res) => {
-  const { sender_account_id, recipient_account_id, amount } = req.body ?? {};
-  const [row] = await callFunction('app',
-    'SELECT ledger.transfer($1, $2, $3, $4) AS transaction_id',
-    [sender_account_id, recipient_account_id, amount, keyOf(req)]);
+app.post('/api/me/transfers', route(async (req, res) => {
+  const { recipient_account_id, amount } = req.body ?? {};
+  const [row] = await callFunction('web',
+    'SELECT ledger.my_transfer($1, $2, $3, $4) AS transaction_id',
+    [tokenOf(req), recipient_account_id, amount, keyOf(req)]);
   res.status(201).json(row);
 }));
 
-app.post('/api/refunds', route(async (req, res) => {
+app.post('/api/me/refunds', route(async (req, res) => {
   const { original_transaction_id, amount } = req.body ?? {};
-  const [row] = await callFunction('app',
-    'SELECT ledger.refund($1, $2, $3) AS transaction_id',
-    [original_transaction_id, amount, keyOf(req)]);
+  const [row] = await callFunction('web',
+    'SELECT ledger.my_refund($1, $2, $3, $4) AS transaction_id',
+    [tokenOf(req), original_transaction_id, amount, keyOf(req)]);
   res.status(201).json(row);
 }));
 
 app.get('/api/fee', route(async (req, res) => {
-  const [row] = await callFunction('app', 'SELECT ledger.calculate_fee($1) AS fee', [req.query.amount]);
+  const [row] = await callFunction('web', 'SELECT ledger.calculate_fee($1) AS fee', [req.query.amount]);
   res.json(row);
 }));
 
-// ---- admin (separate database login) ------------------------------------------------
+// ---- admin -------------------------------------------------------------------------
+// Admin log-in, the admin dashboard and the demo console. Every admin route checks the
+// admin session token in the database first (see server/admin.js).
 
-app.post('/api/accounts/:accountId/freeze', route(async (req, res) => {
-  const [row] = await callFunction('admin',
-    'SELECT ledger.freeze_account($1) AS account_id', [req.params.accountId]);
-  res.json(row);
-}));
-
-app.post('/api/accounts/:accountId/unfreeze', route(async (req, res) => {
-  const [row] = await callFunction('admin',
-    'SELECT ledger.unfreeze_account($1) AS account_id', [req.params.accountId]);
-  res.json(row);
-}));
-
-app.get('/api/reconciliation', route(async (req, res) => {
-  const [row] = await callFunction('admin', 'SELECT ledger.reconciliation_summary() AS healthy');
-  res.json(row);
-}));
-
-app.get('/api/reconciliation/issues', route(async (req, res) => {
-  res.json(await callFunction('admin', 'SELECT * FROM ledger.reconciliation_issues()'));
-}));
-
-app.use('/api/demo', demo);
+app.use('/api/admin', admin);
+app.use('/api/demo', requireAdmin, demo);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
@@ -121,6 +118,7 @@ app.use((error, req, res, next) => {
   void next;
   let status = 500;
   if (error.status) status = error.status;
+  else if (error.code === 'P1002') status = 401;        // not logged in / session expired
   else if (error.code === 'P1001') status = /already in progress/.test(error.message) ? 409 : 422;
   else if (error.code === '42501') status = 403;        // permission denied
   else if (error.code === '40P01' || error.code === '40001') status = 409; // deadlock / serialization

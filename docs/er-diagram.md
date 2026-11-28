@@ -9,6 +9,10 @@ erDiagram
     TRANSACTIONS ||--|{ LEDGER_ENTRIES : "consists of (2 or more)"
     TRANSACTIONS |o--o{ TRANSACTIONS : "reversed by (refunds)"
     TRANSACTIONS ||--o{ IDEMPOTENCY_KEYS : "recorded under"
+    USERS ||--o| USER_CREDENTIALS : "logs in with"
+    USERS ||--o{ SESSIONS : "has"
+    ADMINS ||--o{ ADMIN_SESSIONS : "has"
+    ADMINS |o--o| ADMIN_INVITES : "signed up with"
 
     USERS {
         bigint id PK
@@ -42,6 +46,42 @@ erDiagram
         bigint transaction_id FK
         timestamptz created_at
     }
+    USER_CREDENTIALS {
+        bigint user_id PK, FK
+        text password_hash "bcrypt"
+        int failed_attempts
+        timestamptz locked_until
+        timestamptz updated_at
+    }
+    SESSIONS {
+        bytea token_hash PK "SHA-256 of the token"
+        bigint user_id FK
+        timestamptz created_at
+        timestamptz expires_at
+        timestamptz revoked_at
+    }
+    ADMINS {
+        bigint id PK
+        varchar name
+        varchar email UK "lower case"
+        text password_hash "bcrypt"
+        int failed_attempts
+        timestamptz locked_until
+        timestamptz created_at
+    }
+    ADMIN_SESSIONS {
+        bytea token_hash PK "SHA-256 of the token"
+        bigint admin_id FK
+        timestamptz created_at
+        timestamptz expires_at
+        timestamptz revoked_at
+    }
+    ADMIN_INVITES {
+        bytea code_hash PK "SHA-256 of the code"
+        timestamptz created_at
+        bigint used_by FK "null until used"
+        timestamptz used_at
+    }
     LEDGER_ENTRIES {
         bigint id PK
         bigint transaction_id FK
@@ -73,7 +113,7 @@ erDiagram
 
 Transactions and accounts have an **M : N** relationship. One transaction touches several accounts (a transfer touches Alice, Bob and Fee Income), and one account takes part in many transactions. `LEDGER_ENTRIES` resolves that M : N into two 1 : N relationships. It also carries the attributes that belong to the *link itself*: `direction` and `amount`.
 
-## Changes from the first draft (`Untitled Diagram.drawio.png`)
+## Changes from the first draft
 
 - Transaction ↔ ledger entry changed from 1 : 1 to **1 : N**.
 - Total participation moved from the account side to the **user side** of "owns".

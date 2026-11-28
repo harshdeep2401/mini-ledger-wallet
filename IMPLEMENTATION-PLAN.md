@@ -247,6 +247,19 @@ Built: wallet list/create, wallet detail with history, pay flow with fee review,
 
 ---
 
+## Extended features: live admin and login → `db/11_admin_monitor.sql`, `db/12_auth.sql`
+
+See `EXTENDED-FEATURES.md`. Built: traffic simulator, live feed (`LISTEN/NOTIFY` → Server-Sent Events), dashboard with the `BANK = wallets + fees` check and live reconciliation, transaction tracer, admin wallet directory, and per-user log-in checked in the database through the new `ledger_web` role.
+
+**Done when**
+- [x] The live feed shows only committed transactions, and the books difference stays ₹0 while the simulator runs
+- [x] `ledger_web` can call only session-token functions (`tests/13_auth.sql`)
+- [x] Monitor functions are admin/reporting only (`tests/12_admin_monitor.sql`)
+- [x] Admin log-in with invite-only sign-up; every admin route and the demo console need an admin token (`db/13_admin_auth.sql`, `tests/14_admin_auth.sql`)
+- [x] `npm run test:db`: 13 files
+
+---
+
 ## Phase 13: Documentation
 
 `docs/er-diagram`, `docs/invariants.md` (each guarantee, the database object that enforces it, and the test that proves it), `docs/decisions.md`, `docs/performance.md`, `docs/concurrency.md`, the demo script, and the README with the simulation disclaimer.

@@ -1,12 +1,14 @@
 # Demo script
 
-About 20 minutes. Open the **Demo console** tab. Everything below is a click on **Next step**; each result shows the function called, the input, the output, the ledger legs and the balances.
+About 25 minutes. Log in with your admin account (created once with **Admin → Sign up** and an invite code from `npm run db:seed:logins`). Parts 0–8 use **Admin → Demo console**: everything is a click on **Next step**, and each result shows the function called, the input, the output, the ledger legs and the balances. Part 9 uses the user dashboard, part 10 **Admin → Dashboard**.
 
 **Before you start**
 - `npm run server` and `npm run client:dev` are running.
 - Pick any act and press Next once: the "Ledger healthy ✅" line should appear.
 - Keep psql or the Neon console open in case someone asks to see a table.
 - Each scenario creates fresh Alice and Bob wallets, so the numbers below repeat.
+- `npm run db:seed:logins` has been run. For part 9, open a second browser window (or a private window) so you can stay logged in as admin in the first.
+- Admin → Dashboard shows "● LIVE" next to the feed title.
 
 ## 0. Pitch (1 min) — *Start here*
 > "The database itself guarantees money can't be created, lost, double-spent or silently edited, even if the app is buggy. The server has no `if balance < amount` anywhere. It calls one database function per request."
@@ -87,10 +89,30 @@ Run **Idempotency**: eight sessions with one key give one transaction and seven 
 
 > "Equality column first, then the sort columns, so the index already holds rows in the order we want. OFFSET has to build and throw away every skipped row."
 
+## 9. Logging in (3 min) — *User dashboard*
+1. **Log in as Riya** (`riya.demo@mini-ledger.test`, `demo-password`) as a Wallet user. Balance and recent activity appear.
+2. **Transfer ₹500 to Kabir:** the review shows the ₹2.50 fee before you confirm. Note there is no "From" field.
+3. **Log out, log in as Kabir,** and refund Riya's payment from his recent activity. Riya can't refund her own payment: the button isn't shown, and the database would refuse it anyway.
+4. **Try an admin URL with a user token:** refused (401). Admin actions check for an *admin* token inside the database.
+5. **Wrong password 5 times:** "too many failed attempts". The email is locked for 5 minutes.
+
+> "The browser login, `ledger_web`, can only call functions that take a session token. The database turns the token into the wallet, so a request can't even name someone else's wallet. Passwords are bcrypt hashes and tokens are stored as SHA-256, both inside Postgres."
+
+## 10. Live traffic (3 min) — *Admin → Dashboard*
+1. **Start the simulator at 10/sec.** Thirty simulated users start paying each other. The live feed scrolls and the counters move.
+2. **Point at the rejections:** overspends, self-transfers and over-refunds, each with the database's own message. "Retries replayed" is the double-click case happening at scale.
+3. **Point at the equation:** `BANK = all wallets + fee income`, difference ₹0, and reconciliation green, while money is moving.
+4. **Click any transfer in the feed:** the tracer shows its legs (debits = credits) and any refunds with what is left to refund.
+5. **Optional:** switch to Demo console, run the tamper act, switch back, and the reconciliation tile is red until the act repairs it.
+
+> "The feed is pushed by Postgres itself: a trigger calls `NOTIFY`, which is delivered only at commit, so a rejected payment never appears. The ids have gaps because a rolled-back payment still used up a sequence number."
+
 ## Closing
 > "Money is never a number I update. It's the sum of immutable entries, and Postgres refuses anything that doesn't balance, rewrites history, overdraws or double-charges."
 
 ## If something goes wrong
 - **Ledger check red before the tamper act:** run the tamper scenario to the end (the repair step), or leave it. Leaving a scenario also repairs it.
 - **Concurrency demo says another is running:** wait for it to finish.
-- **Console shows a 503:** the server's `.env` is missing `APP_DATABASE_URL` or `ADMIN_DATABASE_URL`; run `npm run server:setup-logins`.
+- **A page shows a 503:** the server's `.env` is missing `APP_DATABASE_URL`, `ADMIN_DATABASE_URL` or `WEB_DATABASE_URL`; run `npm run server:setup-logins` and restart the server.
+- **Feed says "reconnecting":** restart `npm run server`. The listener uses Neon's direct (non-pooler) address.
+- **A log-in is locked:** wait 5 minutes, or run `npm run db:seed:logins` again (it resets the lock).

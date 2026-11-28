@@ -1,8 +1,8 @@
 // One-time setup of the API's database logins.
 //   npm run server:setup-logins
 //
-// Gives ledger_app and ledger_admin a random password (set with ALTER ROLE) and writes
-// APP_DATABASE_URL and ADMIN_DATABASE_URL into .env. Passwords are never printed and .env
+// Gives ledger_app, ledger_admin and ledger_web a random password (set with ALTER ROLE)
+// and writes APP_DATABASE_URL, ADMIN_DATABASE_URL and WEB_DATABASE_URL into .env. Passwords are never printed and .env
 // is git-ignored. Run it again with --rotate to replace existing passwords.
 import { randomBytes } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -14,6 +14,7 @@ const rotate = process.argv.includes('--rotate');
 const roles = [
   { role: 'ledger_app', variable: 'APP_DATABASE_URL' },
   { role: 'ledger_admin', variable: 'ADMIN_DATABASE_URL' },
+  { role: 'ledger_web', variable: 'WEB_DATABASE_URL' },   // created by db/12_auth.sql
 ];
 
 if (!process.env.DATABASE_URL) {

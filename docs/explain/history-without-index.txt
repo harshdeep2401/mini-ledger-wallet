@@ -1,149 +1,149 @@
 --- run 1 of 3 ---
-Limit  (cost=10326.88..10335.61 rows=20 width=72) (actual time=86.616..92.910 rows=20.00 loops=1)
+Limit  (cost=10403.21..10411.88 rows=20 width=64) (actual time=84.053..90.037 rows=20.00 loops=1)
   Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
-  Buffers: shared hit=3646
-  ->  Nested Loop  (cost=10326.88..62469.50 rows=119443 width=72) (actual time=86.615..92.906 rows=20.00 loops=1)
+  Buffers: shared hit=3669, temp read=248 written=322
+  ->  Nested Loop  (cost=10403.21..62773.35 rows=120752 width=64) (actual time=84.052..90.032 rows=20.00 loops=1)
         Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
         Inner Unique: true
-        Buffers: shared hit=3646
-        ->  Gather Merge  (cost=10326.57..24237.68 rows=119443 width=36) (actual time=86.012..92.265 rows=20.00 loops=1)
+        Buffers: shared hit=3669, temp read=248 written=322
+        ->  Gather Merge  (cost=10402.90..24466.46 rows=120752 width=36) (actual time=83.199..89.141 rows=20.00 loops=1)
               Output: e.id, e.transaction_id, e.created_at, e.direction, e.amount
               Workers Planned: 2
               Workers Launched: 2
-              Buffers: shared hit=3586
-              ->  Sort  (cost=9326.55..9450.97 rows=49768 width=36) (actual time=71.507..71.529 rows=427.33 loops=3)
+              Buffers: shared hit=3609, temp read=248 written=322
+              ->  Sort  (cost=9402.88..9528.66 rows=50313 width=36) (actual time=68.909..68.943 rows=683.00 loops=3)
                     Output: e.id, e.transaction_id, e.created_at, e.direction, e.amount
                     Sort Key: e.created_at DESC, e.id DESC
-                    Sort Method: quicksort  Memory: 3770kB
-                    Buffers: shared hit=3586
-                    Worker 0:  actual time=72.738..72.752 rows=257.00 loops=1
-                      Sort Method: quicksort  Memory: 3391kB
-                      Buffers: shared hit=1266
-                    Worker 1:  actual time=62.606..62.658 rows=1024.00 loops=1
-                      Sort Method: quicksort  Memory: 3090kB
-                      Buffers: shared hit=999
-                    ->  Parallel Seq Scan on ledger.ledger_entries e  (cost=0.00..5443.92 rows=49768 width=36) (actual time=0.046..27.463 rows=40000.00 loops=3)
+                    Sort Method: external merge  Disk: 2576kB
+                    Buffers: shared hit=3609, temp read=248 written=322
+                    Worker 0:  actual time=67.614..67.664 rows=1024.00 loops=1
+                      Sort Method: quicksort  Memory: 3213kB
+                      Buffers: shared hit=1190
+                    Worker 1:  actual time=58.535..58.584 rows=1024.00 loops=1
+                      Sort Method: quicksort  Memory: 2493kB
+                      Buffers: shared hit=929
+                    ->  Parallel Seq Scan on ledger.ledger_entries e  (cost=0.00..5473.78 rows=50313 width=36) (actual time=0.044..33.939 rows=40092.33 loops=3)
                           Output: e.id, e.transaction_id, e.created_at, e.direction, e.amount
                           Filter: (e.account_id = '2'::bigint)
-                          Rows Removed by Filter: 84667
-                          Buffers: shared hit=3496
-                          Worker 0:  actual time=0.011..25.526 rows=39525.00 loops=1
-                            Buffers: shared hit=1221
-                          Worker 1:  actual time=0.011..13.441 rows=34025.00 loops=1
-                            Buffers: shared hit=954
-        ->  Memoize  (cost=0.30..0.37 rows=1 width=44) (actual time=0.031..0.031 rows=1.00 loops=20)
+                          Rows Removed by Filter: 85013
+                          Buffers: shared hit=3519
+                          Worker 0:  actual time=0.012..25.773 rows=36270.00 loops=1
+                            Buffers: shared hit=1145
+                          Worker 1:  actual time=0.011..31.666 rows=31530.00 loops=1
+                            Buffers: shared hit=884
+        ->  Memoize  (cost=0.30..0.37 rows=1 width=36) (actual time=0.044..0.044 rows=1.00 loops=20)
               Output: t.type, t.metadata, t.id
               Cache Key: e.transaction_id
               Cache Mode: logical
               Hits: 0  Misses: 20  Evictions: 0  Overflows: 0  Memory Usage: 3kB
               Buffers: shared hit=60
-              ->  Index Scan using transactions_pkey on ledger.transactions t  (cost=0.29..0.36 rows=1 width=44) (actual time=0.003..0.003 rows=1.00 loops=20)
+              ->  Index Scan using transactions_pkey on ledger.transactions t  (cost=0.29..0.36 rows=1 width=36) (actual time=0.002..0.002 rows=1.00 loops=20)
                     Output: t.type, t.metadata, t.id
                     Index Cond: (t.id = e.transaction_id)
                     Index Searches: 20
                     Buffers: shared hit=60
 Query Identifier: 7075874531483180280
 Planning:
-  Buffers: shared hit=42
-Planning Time: 0.413 ms
-Execution Time: 93.276 ms
+  Buffers: shared hit=44
+Planning Time: 0.406 ms
+Execution Time: 90.886 ms
 
 --- run 2 of 3 ---
-Limit  (cost=10326.88..10335.61 rows=20 width=72) (actual time=82.403..88.737 rows=20.00 loops=1)
+Limit  (cost=10403.21..10411.88 rows=20 width=64) (actual time=82.703..89.410 rows=20.00 loops=1)
   Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
-  Buffers: shared hit=3646
-  ->  Nested Loop  (cost=10326.88..62469.50 rows=119443 width=72) (actual time=82.401..88.732 rows=20.00 loops=1)
+  Buffers: shared hit=3669
+  ->  Nested Loop  (cost=10403.21..62773.35 rows=120752 width=64) (actual time=82.702..89.406 rows=20.00 loops=1)
         Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
         Inner Unique: true
-        Buffers: shared hit=3646
-        ->  Gather Merge  (cost=10326.57..24237.68 rows=119443 width=36) (actual time=81.915..88.207 rows=20.00 loops=1)
+        Buffers: shared hit=3669
+        ->  Gather Merge  (cost=10402.90..24466.46 rows=120752 width=36) (actual time=81.889..88.554 rows=20.00 loops=1)
               Output: e.id, e.transaction_id, e.created_at, e.direction, e.amount
               Workers Planned: 2
               Workers Launched: 2
-              Buffers: shared hit=3586
-              ->  Sort  (cost=9326.55..9450.97 rows=49768 width=36) (actual time=66.425..66.445 rows=427.33 loops=3)
+              Buffers: shared hit=3609
+              ->  Sort  (cost=9402.88..9528.66 rows=50313 width=36) (actual time=67.054..67.087 rows=683.00 loops=3)
                     Output: e.id, e.transaction_id, e.created_at, e.direction, e.amount
                     Sort Key: e.created_at DESC, e.id DESC
-                    Sort Method: quicksort  Memory: 3703kB
-                    Buffers: shared hit=3586
-                    Worker 0:  actual time=68.274..68.288 rows=257.00 loops=1
-                      Sort Method: quicksort  Memory: 3432kB
-                      Buffers: shared hit=1233
-                    Worker 1:  actual time=55.106..55.153 rows=1024.00 loops=1
-                      Sort Method: quicksort  Memory: 3115kB
-                      Buffers: shared hit=1012
-                    ->  Parallel Seq Scan on ledger.ledger_entries e  (cost=0.00..5443.92 rows=49768 width=36) (actual time=0.048..36.464 rows=40000.00 loops=3)
+                    Sort Method: quicksort  Memory: 3951kB
+                    Buffers: shared hit=3609
+                    Worker 0:  actual time=61.909..61.960 rows=1024.00 loops=1
+                      Sort Method: quicksort  Memory: 3187kB
+                      Buffers: shared hit=1177
+                    Worker 1:  actual time=60.477..60.527 rows=1024.00 loops=1
+                      Sort Method: quicksort  Memory: 3127kB
+                      Buffers: shared hit=1018
+                    ->  Parallel Seq Scan on ledger.ledger_entries e  (cost=0.00..5473.78 rows=50313 width=36) (actual time=0.045..30.927 rows=40092.33 loops=3)
                           Output: e.id, e.transaction_id, e.created_at, e.direction, e.amount
                           Filter: (e.account_id = '2'::bigint)
-                          Rows Removed by Filter: 84667
-                          Buffers: shared hit=3496
-                          Worker 0:  actual time=0.012..41.689 rows=40273.00 loops=1
-                            Buffers: shared hit=1188
-                          Worker 1:  actual time=0.010..32.761 rows=34490.00 loops=1
-                            Buffers: shared hit=967
-        ->  Memoize  (cost=0.30..0.37 rows=1 width=44) (actual time=0.025..0.026 rows=1.00 loops=20)
+                          Rows Removed by Filter: 85013
+                          Buffers: shared hit=3519
+                          Worker 0:  actual time=0.012..24.993 rows=35807.00 loops=1
+                            Buffers: shared hit=1132
+                          Worker 1:  actual time=0.011..40.318 rows=34704.00 loops=1
+                            Buffers: shared hit=973
+        ->  Memoize  (cost=0.30..0.37 rows=1 width=36) (actual time=0.042..0.042 rows=1.00 loops=20)
               Output: t.type, t.metadata, t.id
               Cache Key: e.transaction_id
               Cache Mode: logical
               Hits: 0  Misses: 20  Evictions: 0  Overflows: 0  Memory Usage: 3kB
               Buffers: shared hit=60
-              ->  Index Scan using transactions_pkey on ledger.transactions t  (cost=0.29..0.36 rows=1 width=44) (actual time=0.003..0.003 rows=1.00 loops=20)
+              ->  Index Scan using transactions_pkey on ledger.transactions t  (cost=0.29..0.36 rows=1 width=36) (actual time=0.002..0.002 rows=1.00 loops=20)
                     Output: t.type, t.metadata, t.id
                     Index Cond: (t.id = e.transaction_id)
                     Index Searches: 20
                     Buffers: shared hit=60
 Query Identifier: 7075874531483180280
 Planning:
-  Buffers: shared hit=19
-Planning Time: 0.297 ms
-Execution Time: 89.107 ms
+  Buffers: shared hit=20
+Planning Time: 0.366 ms
+Execution Time: 89.822 ms
 
 --- run 3 of 3 ---
-Limit  (cost=10326.88..10335.61 rows=20 width=72) (actual time=82.500..88.773 rows=20.00 loops=1)
+Limit  (cost=10403.21..10411.88 rows=20 width=64) (actual time=81.278..86.950 rows=20.00 loops=1)
   Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
-  Buffers: shared hit=3646
-  ->  Nested Loop  (cost=10326.88..62469.50 rows=119443 width=72) (actual time=82.498..88.769 rows=20.00 loops=1)
+  Buffers: shared hit=3669
+  ->  Nested Loop  (cost=10403.21..62773.35 rows=120752 width=64) (actual time=81.277..86.946 rows=20.00 loops=1)
         Output: e.id, e.transaction_id, e.created_at, t.type, e.direction, e.amount, t.metadata
         Inner Unique: true
-        Buffers: shared hit=3646
-        ->  Gather Merge  (cost=10326.57..24237.68 rows=119443 width=36) (actual time=82.007..88.242 rows=20.00 loops=1)
+        Buffers: shared hit=3669
+        ->  Gather Merge  (cost=10402.90..24466.46 rows=120752 width=36) (actual time=80.400..86.031 rows=20.00 loops=1)
               Output: e.id, e.transaction_id, e.created_at, e.direction, e.amount
               Workers Planned: 2
               Workers Launched: 2
-              Buffers: shared hit=3586
-              ->  Sort  (cost=9326.55..9450.97 rows=49768 width=36) (actual time=71.041..71.073 rows=683.00 loops=3)
+              Buffers: shared hit=3609
+              ->  Sort  (cost=9402.88..9528.66 rows=50313 width=36) (actual time=69.540..69.573 rows=683.00 loops=3)
                     Output: e.id, e.transaction_id, e.created_at, e.direction, e.amount
                     Sort Key: e.created_at DESC, e.id DESC
-                    Sort Method: quicksort  Memory: 3988kB
-                    Buffers: shared hit=3586
-                    Worker 0:  actual time=72.815..72.862 rows=1024.00 loops=1
-                      Sort Method: quicksort  Memory: 3236kB
-                      Buffers: shared hit=1074
-                    Worker 1:  actual time=59.958..60.007 rows=1024.00 loops=1
-                      Sort Method: quicksort  Memory: 3026kB
-                      Buffers: shared hit=1079
-                    ->  Parallel Seq Scan on ledger.ledger_entries e  (cost=0.00..5443.92 rows=49768 width=36) (actual time=0.049..17.764 rows=40000.00 loops=3)
+                    Sort Method: quicksort  Memory: 3982kB
+                    Buffers: shared hit=3609
+                    Worker 0:  actual time=65.802..65.852 rows=1024.00 loops=1
+                      Sort Method: quicksort  Memory: 3271kB
+                      Buffers: shared hit=1092
+                    Worker 1:  actual time=65.872..65.922 rows=1024.00 loops=1
+                      Sort Method: quicksort  Memory: 2551kB
+                      Buffers: shared hit=1087
+                    ->  Parallel Seq Scan on ledger.ledger_entries e  (cost=0.00..5473.78 rows=50313 width=36) (actual time=0.043..30.930 rows=40092.33 loops=3)
                           Output: e.id, e.transaction_id, e.created_at, e.direction, e.amount
                           Filter: (e.account_id = '2'::bigint)
-                          Rows Removed by Filter: 84667
-                          Buffers: shared hit=3496
-                          Worker 0:  actual time=0.012..8.769 rows=36701.00 loops=1
-                            Buffers: shared hit=1029
-                          Worker 1:  actual time=0.015..16.947 rows=32856.00 loops=1
-                            Buffers: shared hit=1034
-        ->  Memoize  (cost=0.30..0.37 rows=1 width=44) (actual time=0.026..0.026 rows=1.00 loops=20)
+                          Rows Removed by Filter: 85013
+                          Buffers: shared hit=3519
+                          Worker 0:  actual time=0.010..33.179 rows=37343.00 loops=1
+                            Buffers: shared hit=1047
+                          Worker 1:  actual time=0.010..32.776 rows=32598.00 loops=1
+                            Buffers: shared hit=1042
+        ->  Memoize  (cost=0.30..0.37 rows=1 width=36) (actual time=0.045..0.045 rows=1.00 loops=20)
               Output: t.type, t.metadata, t.id
               Cache Key: e.transaction_id
               Cache Mode: logical
               Hits: 0  Misses: 20  Evictions: 0  Overflows: 0  Memory Usage: 3kB
               Buffers: shared hit=60
-              ->  Index Scan using transactions_pkey on ledger.transactions t  (cost=0.29..0.36 rows=1 width=44) (actual time=0.003..0.003 rows=1.00 loops=20)
+              ->  Index Scan using transactions_pkey on ledger.transactions t  (cost=0.29..0.36 rows=1 width=36) (actual time=0.002..0.002 rows=1.00 loops=20)
                     Output: t.type, t.metadata, t.id
                     Index Cond: (t.id = e.transaction_id)
                     Index Searches: 20
                     Buffers: shared hit=60
 Query Identifier: 7075874531483180280
 Planning:
-  Buffers: shared hit=19
-Planning Time: 0.297 ms
-Execution Time: 89.185 ms
+  Buffers: shared hit=20
+Planning Time: 0.324 ms
+Execution Time: 87.401 ms

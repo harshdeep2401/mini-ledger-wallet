@@ -13,9 +13,14 @@ function makePool(variable) {
   return new pg.Pool({ connectionString, max: 10 });
 }
 
-// ledger_app: money movement and reads. ledger_admin: freeze/unfreeze and reconciliation.
-// Neither can touch a table. The owner pool below is reserved for the demo console.
+// ledger_web: the browser-facing login. It can call only the session-token functions
+//   (db/12_auth.sql), so the database decides whose wallet each request touches.
+// ledger_app: trusted internal tools (demo console, traffic simulator). Not used by
+//   browser-facing routes.
+// ledger_admin: monitor reads, freeze/unfreeze and reconciliation.
+// None of them can touch a table. The owner pool below is reserved for the demo console.
 export const pools = {
+  web: makePool('WEB_DATABASE_URL'),
   app: makePool('APP_DATABASE_URL'),
   admin: makePool('ADMIN_DATABASE_URL'),
   // The owner login (DATABASE_URL). Used ONLY by the demo console (server/demo/), for

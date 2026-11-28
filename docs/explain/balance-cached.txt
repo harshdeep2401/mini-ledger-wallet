@@ -1,23 +1,23 @@
 --- run 1 of 3 ---
-Result  (cost=0.00..0.26 rows=1 width=8) (actual time=0.232..0.232 rows=1.00 loops=1)
+Result  (cost=0.00..0.26 rows=1 width=8) (actual time=0.200..0.200 rows=1.00 loops=1)
   Output: ledger.get_balance('2'::bigint)
   Buffers: shared hit=6
 Query Identifier: -49191320515122305
-Planning Time: 0.021 ms
-Execution Time: 0.253 ms
+Planning Time: 0.020 ms
+Execution Time: 0.219 ms
 
 --- run 2 of 3 ---
-Result  (cost=0.00..0.26 rows=1 width=8) (actual time=0.127..0.127 rows=1.00 loops=1)
+Result  (cost=0.00..0.26 rows=1 width=8) (actual time=0.220..0.220 rows=1.00 loops=1)
   Output: ledger.get_balance('2'::bigint)
-  Buffers: shared hit=3
+  Buffers: shared hit=6
 Query Identifier: -49191320515122305
 Planning Time: 0.020 ms
-Execution Time: 0.148 ms
+Execution Time: 0.238 ms
 
 --- run 3 of 3 ---
-Result  (cost=0.00..0.26 rows=1 width=8) (actual time=0.131..0.131 rows=1.00 loops=1)
+Result  (cost=0.00..0.26 rows=1 width=8) (actual time=0.134..0.134 rows=1.00 loops=1)
   Output: ledger.get_balance('2'::bigint)
   Buffers: shared hit=3
 Query Identifier: -49191320515122305
-Planning Time: 0.022 ms
-Execution Time: 0.152 ms
+Planning Time: 0.021 ms
+Execution Time: 0.154 ms

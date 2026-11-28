@@ -1,14 +1,12 @@
 import { useState } from 'react';
-import { api, formatRupees, rupeesToPaise } from './api.js';
-import { useAction } from './useAction.js';
-import WalletPicker from './WalletPicker.jsx';
+import { api, formatRupees, rupeesToPaise } from '../api.js';
+import { useAction } from '../useAction.js';
+import RecipientPicker from './RecipientPicker.jsx';
 
-// Steps: choose wallets and amount -> confirm (shows the fee) -> result with a reference.
-export default function Pay({ initialSender, onChanged }) {
-  const [sender, setSender] = useState(initialSender ?? null);
+// Steps: choose who and how much -> confirm (shows the fee) -> result with a reference.
+// There is no "from" field: the database pays from the logged-in user's own wallet.
+export default function Pay({ onChanged }) {
   const [recipient, setRecipient] = useState(null);
-  const senderId = sender?.account_id ?? '';
-  const recipientId = recipient?.account_id ?? '';
   const [amountText, setAmountText] = useState('');
   const [step, setStep] = useState('form');
   const [fee, setFee] = useState(null);
@@ -17,7 +15,7 @@ export default function Pay({ initialSender, onChanged }) {
   const action = useAction(api.transfer);
 
   const paise = rupeesToPaise(amountText);
-  const payload = () => ({ sender_account_id: senderId, recipient_account_id: recipientId, amount: paise });
+  const payload = () => ({ recipient_account_id: recipient?.account_id, amount: paise });
 
   async function review(event) {
     event.preventDefault();
@@ -40,24 +38,24 @@ export default function Pay({ initialSender, onChanged }) {
     setTwice(results.map((r) => (r.status === 'fulfilled'
       ? `OK, ref #${r.value.transaction_id}`
       : `Refused: ${r.reason.message}`)));
+    onChanged?.();
   }
 
   function again() {
-    setStep('form'); setAmountText(''); setTwice(null); setError('');
+    setStep('form'); setAmountText(''); setTwice(null); setError(''); setRecipient(null);
   }
 
   return (
-    <section className="card narrow">
-      <h2>Pay</h2>
+    <section className="card">
+      <h3 style={{ marginTop: 0 }}>Pay someone</h3>
       {step === 'form' && (
         <form onSubmit={review}>
-          <WalletPicker label="From" value={sender} onChange={setSender} excludeId={recipientId} />
-          <WalletPicker label="To" value={recipient} onChange={setRecipient} excludeId={senderId} />
+          <RecipientPicker value={recipient} onChange={setRecipient} />
           <label>Amount (₹)
             <input required value={amountText} onChange={(e) => setAmountText(e.target.value)} placeholder="500.00" />
           </label>
           {amountText && paise === null && <p className="error">Enter an amount like 500 or 500.50</p>}
-          <button disabled={paise === null || !sender || !recipient}>Review payment</button>
+          <button disabled={paise === null || !recipient}>Review payment</button>
           {error && <p className="error">{error}</p>}
         </form>
       )}
@@ -66,7 +64,6 @@ export default function Pay({ initialSender, onChanged }) {
         <div>
           <p>Pay <strong>{recipient?.name}</strong></p>
           <table><tbody>
-            <tr><td>From</td><td>{sender?.name}</td></tr>
             <tr><td>Amount</td><td>{formatRupees(paise)}</td></tr>
             <tr><td>Fee (set by the database)</td><td>{formatRupees(fee)}</td></tr>
             <tr><td>Total debited</td><td><strong>{formatRupees(paise + Number(fee))}</strong></td></tr>
